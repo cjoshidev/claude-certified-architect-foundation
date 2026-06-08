@@ -1664,6 +1664,47 @@
     .drawer-header { padding: 18px 22px 14px; }
     .drawer-body { padding: 18px 22px 50px; }
   }
+
+  /* ─── TOAST ──────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1a1a2e;
+    color: #fff;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ─── FOOTER ─────────────────────────────────── */
+  .app-footer {
+    text-align: center;
+    padding: 16px 12px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    border-top: 1px solid var(--border-soft);
+    margin-top: auto;
+  }
+  .app-footer a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .app-footer a:hover {
+    text-decoration: underline;
+  }
 </style>
 </head>
 <body>
@@ -1713,7 +1754,7 @@
       <span class="d-num">◈</span>
       Visualize
     </button>
-    <button class="domain-btn" onclick="showMockExam(this)">
+    <button class="domain-btn" onclick="showToast('Mock Exam feature coming soon!')">
       <span class="d-num">⏱</span>
       Mock Exam
     </button>
@@ -1726,6 +1767,10 @@
       <div class="prog-label">Overall Progress</div>
       <div class="prog-bar-bg"><div class="prog-bar-fill" id="prog-fill" style="width:0%"></div></div>
       <div class="prog-count" id="prog-count">0 / <span id="total-q">0</span> answered</div>
+    </div>
+
+    <div class="app-footer">
+      Made with ❤️ by <a href="https://www.linkedin.com/in/chandan015/" target="_blank" rel="noopener">Chandan Joshi</a>
     </div>
   </nav>
 
@@ -5160,8 +5205,22 @@ function showCheatSheet(btn) {
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
+function showToast(msg) {
+  let toast = document.getElementById('app-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'app-toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
 updateProgress();
 showHome(null);
 </script>
+
 </body>
 </html>
