@@ -1778,7 +1778,7 @@
   <main class="main" id="main-content">
     <div class="home-screen" id="home-placeholder">
       <h1>Exam Prep</h1>
-      <p class="subtitle">Five domains, 118 practice questions drawn directly from the official exam guide skills. Select a domain to begin.</p>
+      <p class="subtitle">Five domains, 135 practice questions drawn directly from the official exam guide skills. Select a domain to begin.</p>
       <div class="domain-cards">
         <div class="domain-card" onclick="showDomain(1, null)">
           <div class="dc-num">01</div>
@@ -2715,20 +2715,52 @@ const DOMAINS = [
       {
         id: "2.1",
         title: "Design effective tool interfaces with clear descriptions and boundaries",
+        lesson: [
+          {
+            heading: "Why tool descriptions matter more than tool names",
+            body: "<p>Claude selects tools primarily based on their <strong>descriptions</strong>, not their names. A tool named <code>search_docs</code> with a description of \"Searches documents\" gives Claude almost no basis for selection when multiple search-like tools exist.</p><p>Effective descriptions answer four questions:</p><ul><li><strong>What</strong> does this tool do? (specific action, not vague category)</li><li><strong>What inputs</strong> does it expect? (formats, types, constraints)</li><li><strong>What outputs</strong> does it return? (structure, fields, data types)</li><li><strong>When should it be used</strong> vs alternatives? (explicit decision criteria)</li></ul>"
+          },
+          {
+            heading: "The tool proliferation problem",
+            body: "<p>As the number of available tools increases, Claude's tool selection accuracy degrades. This isn't a model limitation — it's a signal-to-noise problem. With 5 tools, each description gets significant attention. With 25 tools, relevant descriptions compete with irrelevant ones.</p><p>Two mitigations:</p><ul><li><strong>Scope tool access by role.</strong> Give each subagent only the tools relevant to its task. A synthesis agent doesn't need search tools.</li><li><strong>Differentiate descriptions explicitly.</strong> When tools have similar purposes, include explicit \"Use this when... NOT for...\" boundaries in descriptions.</li></ul>"
+          },
+          {
+            heading: "Splitting generic tools into purpose-specific tools",
+            body: "<p>A common anti-pattern: one mega-tool that serves multiple purposes (e.g., <code>analyze_document</code> for extraction, summarisation, AND verification). This forces Claude to infer the intended operation from context — and it often guesses wrong.</p><p>The fix: split into purpose-specific tools with clear contracts:</p><ul><li><code>extract_data_points</code> → returns structured fields from a document</li><li><code>summarize_content</code> → returns prose summary at specified length</li><li><code>verify_claim_against_source</code> → returns boolean + supporting evidence</li></ul><p>Each tool does exactly one thing. Its name and description leave no ambiguity about when to use it.</p>"
+          },
+          {
+            heading: "System prompt interference with tool selection",
+            body: "<p>Even with perfect tool descriptions, system prompt wording can override selection. A phrase like <em>\"always verify customer identity first\"</em> creates a keyword association that causes Claude to call <code>get_customer</code> for every request — even pure order lookups.</p><p>Review system prompts for keyword-sensitive instructions that inadvertently create tool associations. Rephrase to avoid triggering specific tools unless that's the intent.</p><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Exam pattern</span>When a question describes correct tool descriptions but incorrect tool selection, look for system prompt interference as the root cause.</div>"
+          }
+        ],
         skills: [
           {
             text: "Writing tool descriptions that clearly differentiate each tool's purpose, expected inputs, outputs, and when to use it versus similar alternatives",
-            q: {
-              stem: "Two tools: `analyze_content` described as \"Analyzes content\" and `analyze_document` described as \"Analyzes documents.\" In production, Claude frequently calls the wrong tool. What is the most effective first fix?",
-              options: [
-                "Rename one tool to make names less similar",
-                "Expand each description to clearly differentiate purpose, expected inputs, outputs, and when to use it vs the other — e.g., `analyze_content` for web-scraped text and HTML, `analyze_document` for PDFs and structured files with page references",
-                "Add a routing classifier that pre-selects the tool based on input type",
-                "Merge both tools into one that internally routes based on input format"
-              ],
-              correct: 1,
-              reasoning: "Tool descriptions are the primary mechanism Claude uses for tool selection. Minimal descriptions like 'Analyzes content' vs 'Analyzes documents' give Claude no basis to differentiate. Expanding descriptions with input formats, example use cases, outputs, and explicit boundaries ('use this when... NOT for...') is the most direct fix and the one with lowest implementation cost."
-            }
+            questions: [
+              {
+                stem: "Two tools: `analyze_content` described as \"Analyzes content\" and `analyze_document` described as \"Analyzes documents.\" In production, Claude frequently calls the wrong tool. What is the most effective first fix?",
+                options: [
+                  "Rename one tool to make names less similar",
+                  "Expand each description to clearly differentiate purpose, expected inputs, outputs, and when to use it vs the other — e.g., `analyze_content` for web-scraped text and HTML, `analyze_document` for PDFs and structured files with page references",
+                  "Add a routing classifier that pre-selects the tool based on input type",
+                  "Merge both tools into one that internally routes based on input format"
+                ],
+                correct: 1,
+                reasoning: "Tool descriptions are the primary mechanism Claude uses for tool selection. Minimal descriptions like 'Analyzes content' vs 'Analyzes documents' give Claude no basis to differentiate. Expanding descriptions with input formats, example use cases, outputs, and explicit boundaries ('use this when... NOT for...') is the most direct fix and the one with lowest implementation cost."
+              },
+              {
+                scenario: "Scenario — E-commerce Order Management Agent",
+                stem: "Your e-commerce agent has access to `get_order_status` and `track_shipment`. Both are described as 'Gets order information.' When customers ask 'Where is my package?', Claude calls `get_order_status` which returns payment/item details but not tracking info. The correct tool is `track_shipment`. What went wrong and how do you fix it?",
+                options: [
+                  "Remove `get_order_status` since customers mostly want shipping info",
+                  "Rewrite descriptions: `get_order_status` = 'Returns order details: items purchased, payment status, and order dates. Use when customer asks about what they ordered or payment issues.' `track_shipment` = 'Returns real-time shipping location, carrier, estimated delivery date, and delivery history. Use when customer asks where their package is or when it will arrive.'",
+                  "Add a system prompt rule: 'For shipping questions always use track_shipment'",
+                  "Combine both tools into a single `get_order_info` tool"
+                ],
+                correct: 1,
+                reasoning: "The root cause is indistinguishable descriptions. Both say 'Gets order information' — Claude has no way to know which returns shipping details. Rewriting descriptions to specify exact outputs and use cases gives Claude the differentiation criteria needed to route correctly. The model selects tools based on description match to the user's intent."
+              }
+            ]
           },
           {
             text: "Renaming tools and updating descriptions to eliminate functional overlap (e.g., renaming analyze_content to extract_web_results with a web-specific description)",
@@ -2777,20 +2809,52 @@ const DOMAINS = [
       {
         id: "2.2",
         title: "Implement structured error responses for MCP tools",
+        lesson: [
+          {
+            heading: "Why generic error messages break agent recovery",
+            body: "<p>When a tool returns <code>{\"error\": \"Operation failed\"}</code>, the agent has no information to make an intelligent recovery decision. It doesn't know:</p><ul><li>Is this a transient failure that might succeed on retry?</li><li>Is this a permanent policy violation that will never succeed?</li><li>Is this a permissions issue requiring escalation?</li></ul><p>Without this metadata, agents either retry everything (wasting resources on non-retryable errors) or give up on everything (missing easy recoveries from transient failures).</p>"
+          },
+          {
+            heading: "The three essential error metadata fields",
+            body: "<p>Every MCP tool error response should include:</p><ul><li><strong><code>errorCategory</code></strong> — transient, business, validation, or permission. Tells the agent what kind of failure occurred.</li><li><strong><code>isRetryable</code></strong> — boolean. Tells the agent whether trying again could succeed.</li><li><strong><code>description</code></strong> — human-readable explanation with enough context for the agent to communicate the situation and suggest next steps.</li></ul><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Key distinction</span>A business rule violation (refund exceeds policy limit) is NOT retryable — the same request will always fail. A timeout (server temporarily unavailable) IS retryable — the same request may succeed moments later.</div>"
+          },
+          {
+            heading: "Empty results are NOT errors",
+            body: "<p>A critical distinction the exam tests: a valid search returning zero matches is a <strong>successful operation</strong>, not an error.</p><ul><li><code>{\"results\": [], \"total\": 0}</code> — success, zero matches found</li><li><code>{\"isError\": true, \"errorCategory\": \"transient\"}</code> — failure, couldn't connect</li></ul><p>Flagging empty results as errors causes the agent to retry a perfectly valid operation, wasting resources and confusing users. The tool connected, ran the query, and found nothing — that's useful information, not a failure.</p>"
+          },
+          {
+            heading: "Local recovery before escalation",
+            body: "<p>Subagents should attempt local recovery for transient failures (retry with backoff) before propagating errors to the coordinator. Only escalate errors that cannot be resolved locally.</p><p>When escalating, include:</p><ul><li>What was attempted (specific query/parameters)</li><li>Any partial results obtained before failure</li><li>Whether the error is retryable</li><li>Suggested alternative approaches</li></ul><p>This gives the coordinator actionable information for intelligent recovery rather than a binary success/fail signal.</p>"
+          }
+        ],
         skills: [
           {
             text: "Returning structured error metadata including errorCategory (transient/validation/permission), isRetryable boolean, and human-readable descriptions",
-            q: {
-              stem: "Your MCP tool returns `{\"success\": false, \"message\": \"Operation failed\"}` when a customer's refund request violates a business policy. The agent retries the operation three times before giving up. What is missing from the error response?",
-              options: [
-                "A stack trace so the agent can understand the technical failure",
-                "`errorCategory: \"business\"` and `isRetryable: false` — without these, the agent cannot distinguish a policy violation (which will never succeed regardless of retries) from a transient failure (which might succeed on retry). Structured metadata prevents wasted retry attempts",
-                "The original request payload so the agent can modify and resubmit it",
-                "A `suggestedAlternative` field pointing to the escalation endpoint"
-              ],
-              correct: 1,
-              reasoning: "Structured error metadata is essential for intelligent agent recovery. `errorCategory: \"business\"` tells the agent this is a policy violation, not a technical failure. `isRetryable: false` tells it retrying will never succeed. Without these fields, the agent treats all failures the same way and wastes retry attempts on non-retryable errors."
-            }
+            questions: [
+              {
+                stem: "Your MCP tool returns `{\"success\": false, \"message\": \"Operation failed\"}` when a customer's refund request violates a business policy. The agent retries the operation three times before giving up. What is missing from the error response?",
+                options: [
+                  "A stack trace so the agent can understand the technical failure",
+                  "`errorCategory: \"business\"` and `isRetryable: false` — without these, the agent cannot distinguish a policy violation (which will never succeed regardless of retries) from a transient failure (which might succeed on retry). Structured metadata prevents wasted retry attempts",
+                  "The original request payload so the agent can modify and resubmit it",
+                  "A `suggestedAlternative` field pointing to the escalation endpoint"
+                ],
+                correct: 1,
+                reasoning: "Structured error metadata is essential for intelligent agent recovery. `errorCategory: \"business\"` tells the agent this is a policy violation, not a technical failure. `isRetryable: false` tells it retrying will never succeed. Without these fields, the agent treats all failures the same way and wastes retry attempts on non-retryable errors."
+              },
+              {
+                scenario: "Scenario — Healthcare Appointment Booking Agent",
+                stem: "Your healthcare booking agent tries to schedule a patient with Dr. Martinez. The MCP tool returns `{\"error\": \"slot unavailable\"}`. The agent tells the patient 'Booking failed, please try again later.' The patient tries repeatedly for a week but the slot is permanently taken. What should the error response have included?",
+                options: [
+                  "A link to Dr. Martinez's calendar so the patient can check themselves",
+                  "`errorCategory: \"business\"`, `isRetryable: false`, `description: \"Requested time slot 2pm Tuesday is permanently booked. Next available slots: Wed 10am, Thu 3pm, Fri 9am.\"` — enabling the agent to immediately offer alternatives instead of suggesting futile retries",
+                  "A generic HTTP 409 Conflict status code",
+                  "The full list of all booked slots for the week"
+                ],
+                correct: 1,
+                reasoning: "The error response must tell the agent: this is a business constraint (not a technical glitch), retrying won't help (the slot is taken), and here are actionable alternatives. Without this structured metadata, the agent can only say 'try again' — which wastes the patient's time on an operation that will never succeed. The human-readable description with alternatives enables immediate recovery."
+              }
+            ]
           },
           {
             text: "Including retriable: false flags and customer-friendly explanations for business rule violations so the agent can communicate appropriately",
@@ -2839,20 +2903,48 @@ const DOMAINS = [
       {
         id: "2.3",
         title: "Distribute tools appropriately across agents and configure tool choice",
+        lesson: [
+          {
+            heading: "Tool scoping as an authorization boundary",
+            body: "<p>Giving each subagent only role-relevant tools isn't just a performance optimisation — it's a <strong>security boundary</strong>. A synthesis agent with access to <code>delete_record</code> might use it. A synthesis agent without that tool physically cannot.</p><p>Think of tool access as authorization: each agent gets the minimum set of tools required for its specific role. This is the tool-use equivalent of the principle of least privilege.</p>"
+          },
+          {
+            heading: "The three tool_choice modes",
+            body: "<p>The <code>tool_choice</code> parameter controls whether and how Claude calls tools:</p><ul><li><strong><code>\"auto\"</code></strong> (default) — Claude decides whether to call a tool or return text. May return text when you need structured output.</li><li><strong><code>\"any\"</code></strong> — Claude MUST call a tool but chooses which one. Use when you need guaranteed structured output but have multiple valid tools.</li><li><strong><code>{\"type\": \"tool\", \"name\": \"...\"}</code></strong> — Forces a specific tool. Use when ordering matters (e.g., metadata extraction must run before enrichment).</li></ul><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Exam pattern</span>When a pipeline sometimes returns conversational text instead of structured data, the answer is usually <code>tool_choice: \"any\"</code>. When a specific tool must run first, the answer is forced tool selection by name.</div>"
+          },
+          {
+            heading: "Forced tool selection for ordering guarantees",
+            body: "<p>When one tool's output is required before another can run (e.g., <code>extract_metadata</code> before <code>enrich_record</code>), use forced tool selection:</p><ol><li>First turn: <code>tool_choice: {\"type\": \"tool\", \"name\": \"extract_metadata\"}</code></li><li>Second turn: <code>tool_choice: \"auto\"</code> — Claude can now call enrichment tools freely</li></ol><p>Tool array ordering has no effect on selection. System prompt instructions are probabilistic. Forced selection is the only <strong>deterministic</strong> ordering mechanism.</p>"
+          }
+        ],
         skills: [
           {
             text: "Restricting each subagent's tool set to those relevant to its role, preventing cross-specialization misuse",
-            q: {
-              stem: "Your synthesis subagent has access to all 18 tools available across the system. You notice it occasionally runs web searches to verify facts instead of synthesising the findings already passed to it. What is the correct fix?",
-              options: [
-                "Add a system prompt instruction: 'Do not use web search tools, only synthesise provided findings'",
-                "Restrict the synthesis subagent's tool set to only synthesis-relevant tools. An agent with 18 tools has degraded selection reliability and will misuse out-of-role tools. Role-scoped tool access prevents cross-specialisation misuse by making the wrong tools unavailable",
-                "Move all web search tools to a separate MCP server the synthesis agent cannot access",
-                "Add a PostToolUse hook that cancels web search calls made by the synthesis agent"
-              ],
-              correct: 1,
-              reasoning: "Tool selection reliability degrades as the number of available tools increases. Giving the synthesis agent all 18 tools means it can (and will) misuse tools outside its role. The correct fix is scoped tool access — give each subagent only the tools relevant to its role. If synthesis only needs synthesis tools, those are the only tools it should have."
-            }
+            questions: [
+              {
+                stem: "Your synthesis subagent has access to all 18 tools available across the system. You notice it occasionally runs web searches to verify facts instead of synthesising the findings already passed to it. What is the correct fix?",
+                options: [
+                  "Add a system prompt instruction: 'Do not use web search tools, only synthesise provided findings'",
+                  "Restrict the synthesis subagent's tool set to only synthesis-relevant tools. An agent with 18 tools has degraded selection reliability and will misuse out-of-role tools. Role-scoped tool access prevents cross-specialisation misuse by making the wrong tools unavailable",
+                  "Move all web search tools to a separate MCP server the synthesis agent cannot access",
+                  "Add a PostToolUse hook that cancels web search calls made by the synthesis agent"
+                ],
+                correct: 1,
+                reasoning: "Tool selection reliability degrades as the number of available tools increases. Giving the synthesis agent all 18 tools means it can (and will) misuse tools outside its role. The correct fix is scoped tool access — give each subagent only the tools relevant to its role. If synthesis only needs synthesis tools, those are the only tools it should have."
+              },
+              {
+                scenario: "Scenario — Financial Compliance Multi-Agent System",
+                stem: "Your compliance system has three subagents: a data-extraction agent, a rule-checking agent, and a report-generation agent. The report-generation agent has access to the `modify_transaction` tool (meant for the rule-checking agent's remediation step). During report generation, it occasionally 'fixes' transactions it considers non-compliant. This causes unauthorized financial modifications. What is the architectural fix?",
+                options: [
+                  "Add audit logging to track when the report agent modifies transactions",
+                  "Give the report-generation agent only `read_transactions` and `generate_pdf` tools — remove `modify_transaction` entirely from its tool set. Write-capable tools must only be available to agents whose role explicitly requires mutation authority",
+                  "Add a confirmation prompt before any transaction modification",
+                  "Set the report agent's system prompt to 'Never modify transactions, only report on them'"
+                ],
+                correct: 1,
+                reasoning: "This is a security violation caused by over-provisioned tool access. The report agent should never have write access to financial data. Removing `modify_transaction` from its tool set makes unauthorized modifications impossible — not just discouraged by a prompt. In financial systems, tool access is an authorization boundary, not a suggestion."
+              }
+            ]
           },
           {
             text: "Using tool_choice forced selection to ensure a specific tool is called first (e.g., forcing extract_metadata before enrichment tools), then processing subsequent steps in follow-up turns",
@@ -2887,20 +2979,48 @@ const DOMAINS = [
       {
         id: "2.4",
         title: "Integrate MCP servers into Claude Code and agent workflows",
+        lesson: [
+          {
+            heading: "Project-scoped vs user-scoped MCP configuration",
+            body: "<p>MCP servers can be configured at two levels:</p><ul><li><strong>Project-scoped <code>.mcp.json</code></strong> — committed to the repo, shared with all team members via version control. Use for tools the whole team needs (GitHub, Jira, database access).</li><li><strong>User-scoped <code>~/.claude.json</code></strong> — personal configuration, applies only to your sessions. Use for personal or experimental servers.</li></ul><p>The key principle: if a new developer should get the tool automatically when they clone the repo, it belongs in project scope.</p>"
+          },
+          {
+            heading: "Environment variable expansion for credentials",
+            body: "<p>MCP server configs support <code>${ENV_VAR}</code> expansion for sensitive values. This separates shareable configuration (server URL, tool names) from personal credentials (tokens, API keys):</p><ul><li>Config in <code>.mcp.json</code>: <code>{\"auth\": \"${GITHUB_TOKEN}\"}</code> — safe to commit</li><li>Credential in shell env: <code>export GITHUB_TOKEN=ghp_xxx</code> — never committed</li></ul><p>Each developer sets their own environment variables. The shared config works for everyone without exposing anyone's credentials.</p>"
+          },
+          {
+            heading: "Enhancing MCP tool descriptions",
+            body: "<p>Claude has rich internal knowledge about built-in tools (Grep, Read, Write) but knows nothing about custom MCP tools beyond their descriptions. If your MCP tool's description is weaker than a built-in alternative, Claude will prefer the built-in.</p><p>Fix: write MCP tool descriptions that explain capabilities, when to use vs alternatives, and what outputs to expect. A description like <em>\"Uses semantic understanding to find code by intent, not just text matching\"</em> gives Claude a reason to prefer it over Grep for appropriate queries.</p>"
+          }
+        ],
         skills: [
           {
             text: "Configuring shared MCP servers in project-scoped .mcp.json with environment variable expansion for authentication tokens",
-            q: {
-              stem: "Your team shares a GitHub MCP server. A new developer joins and needs immediate access when they clone the repo. Their personal `~/.claude.json` has no GitHub server configured. Where should the server be configured and how should credentials be handled?",
-              options: [
-                "In each developer's `~/.claude.json` — team leads send onboarding instructions with the config",
-                "In project-scoped `.mcp.json` committed to the repository, with credentials as `${GITHUB_TOKEN}` environment variable expansion. When the developer clones and sets their `GITHUB_TOKEN` environment variable, the server is immediately available — no manual config required",
-                "In a separate `mcp-servers.json` file that developers manually copy to their home directory",
-                "In `CLAUDE.md` under an MCP configuration section"
-              ],
-              correct: 1,
-              reasoning: "Project-scoped `.mcp.json` is version-controlled and shared automatically when developers clone the repository. Environment variable expansion (`${GITHUB_TOKEN}`) handles credentials safely — the token never gets committed, each developer sets their own environment variable. This gives new developers immediate access without manual configuration steps."
-            }
+            questions: [
+              {
+                stem: "Your team shares a GitHub MCP server. A new developer joins and needs immediate access when they clone the repo. Their personal `~/.claude.json` has no GitHub server configured. Where should the server be configured and how should credentials be handled?",
+                options: [
+                  "In each developer's `~/.claude.json` — team leads send onboarding instructions with the config",
+                  "In project-scoped `.mcp.json` committed to the repository, with credentials as `${GITHUB_TOKEN}` environment variable expansion. When the developer clones and sets their `GITHUB_TOKEN` environment variable, the server is immediately available — no manual config required",
+                  "In a separate `mcp-servers.json` file that developers manually copy to their home directory",
+                  "In `CLAUDE.md` under an MCP configuration section"
+                ],
+                correct: 1,
+                reasoning: "Project-scoped `.mcp.json` is version-controlled and shared automatically when developers clone the repository. Environment variable expansion (`${GITHUB_TOKEN}`) handles credentials safely — the token never gets committed, each developer sets their own environment variable. This gives new developers immediate access without manual configuration steps."
+              },
+              {
+                scenario: "Scenario — Enterprise Data Pipeline Team",
+                stem: "Your data engineering team uses a Snowflake MCP server for database operations and a dbt MCP server for transformation orchestration. A contractor joins for 3 months and needs both servers. However, security policy requires that contractor tokens expire after 90 days and use a different auth endpoint. How should you configure this?",
+                options: [
+                  "Give the contractor a copy of the team's tokens with a calendar reminder to revoke",
+                  "Keep both servers in project-scoped `.mcp.json` with `${SNOWFLAKE_TOKEN}` and `${DBT_TOKEN}` environment variables. The contractor sets their own short-lived tokens as env vars — when tokens expire, they simply refresh their env vars without touching the shared config. The `.mcp.json` is auth-endpoint agnostic",
+                  "Create a separate `.mcp.contractor.json` file for the contractor",
+                  "Configure the contractor's servers only in their `~/.claude.json`"
+                ],
+                correct: 1,
+                reasoning: "Environment variable expansion in `.mcp.json` cleanly separates configuration (shared, version-controlled) from credentials (personal, ephemeral). Each person sets their own tokens as env vars — the contractor uses short-lived tokens without requiring any config file changes. When tokens expire, only the env var needs refreshing. This is the standard pattern for teams with mixed credential lifetimes."
+              }
+            ]
           },
           {
             text: "Configuring personal/experimental MCP servers in user-scoped ~/.claude.json",
@@ -2935,6 +3055,20 @@ const DOMAINS = [
       {
         id: "2.5",
         title: "Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob) effectively",
+        lesson: [
+          {
+            heading: "The built-in tool decision tree",
+            body: "<p>Each built-in tool has a specific purpose:</p><ul><li><strong>Grep</strong> — Search file <em>contents</em> for patterns. \"Where is this function called?\"</li><li><strong>Glob</strong> — Find files by <em>name/path</em> patterns. \"Find all *.test.tsx files.\"</li><li><strong>Read</strong> — Load full file contents for inspection or as input to Write.</li><li><strong>Edit</strong> — Modify a specific section using unique anchor text.</li><li><strong>Write</strong> — Create new files or overwrite entire files (fallback when Edit fails).</li><li><strong>Bash</strong> — Shell commands for everything else (build, test, git operations).</li></ul>"
+          },
+          {
+            heading: "Edit vs Read+Write",
+            body: "<p><code>Edit</code> modifies a file by finding unique anchor text and replacing it. It's efficient because it only transmits the diff. But it fails when the anchor text isn't unique (e.g., <code>return result</code> appears 12 times).</p><p>Fallback: <code>Read</code> the full file → modify in memory → <code>Write</code> the complete updated file. More expensive but always works regardless of text uniqueness.</p>"
+          },
+          {
+            heading: "Incremental codebase exploration",
+            body: "<p>The correct exploration strategy for unfamiliar codebases:</p><ol><li><strong>Grep</strong> to find entry points (function names, error messages, API routes)</li><li><strong>Read</strong> to examine the files Grep found, following imports</li><li><strong>Grep</strong> again to trace deeper connections revealed by reading</li></ol><p>This builds understanding incrementally. The anti-pattern is reading all files upfront — this fills context with irrelevant content and misses the relationships between components.</p><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Exam pattern</span>Questions about exploring unfamiliar codebases: the answer is always Grep-first incremental exploration, never \"read everything\" or \"ask Claude to guess.\"</div>"
+          }
+        ],
         skills: [
           {
             text: "Selecting Grep for searching code content across a codebase (e.g., finding all callers of a function, locating error messages)",
@@ -3005,20 +3139,52 @@ const DOMAINS = [
       {
         id: "3.1",
         title: "Configure CLAUDE.md files with appropriate hierarchy, scoping, and modular organization",
+        lesson: [
+          {
+            heading: "The CLAUDE.md hierarchy",
+            body: "<p>Configuration files load in a specific hierarchy, from broadest to most specific:</p><ul><li><strong>User-level</strong> <code>~/.claude/CLAUDE.md</code> — Personal preferences. Only applies to you. Not shared via version control.</li><li><strong>Project-level</strong> <code>.claude/CLAUDE.md</code> or root <code>CLAUDE.md</code> — Team-wide standards. Committed to the repo. All team members get it automatically.</li><li><strong>Rules</strong> <code>.claude/rules/*.md</code> — Conditional rules loaded by path patterns or always.</li></ul><p>Key principle: if the whole team should follow it, it must be at project level. User-level config is for personal preferences only.</p>"
+          },
+          {
+            heading: "@import for modular organization",
+            body: "<p>In monorepos with multiple packages using different languages/conventions, <code>@import</code> lets each package's CLAUDE.md reference only the relevant standards files:</p><ul><li><code>packages/frontend/CLAUDE.md</code> → <code>@import ../../standards/react-conventions.md</code></li><li><code>packages/api/CLAUDE.md</code> → <code>@import ../../standards/python-standards.md</code></li></ul><p>Benefits: standards are defined once (no duplication), each package loads only what it needs (no irrelevant context), and updates propagate automatically.</p>"
+          },
+          {
+            heading: "When CLAUDE.md gets too long",
+            body: "<p>Monolithic CLAUDE.md files (500+ lines) create attention problems — instructions buried deep in the file are more likely to be missed. Signs of trouble:</p><ul><li>Claude sometimes follows the testing rules but sometimes doesn't</li><li>Rules at the bottom of the file are ignored more often than rules at the top</li></ul><p>Fix: split into focused files in <code>.claude/rules/</code> — one concern per file (testing.md, security.md, api-conventions.md). Combined with path-specific scoping, these load only when relevant.</p>"
+          },
+          {
+            heading: "Diagnosing configuration issues",
+            body: "<p>When Claude Code behaves inconsistently — sometimes following rules, sometimes not — use <code>/memory</code> to inspect which configuration files are actually loaded in the current session. Common causes:</p><ul><li>Rules at user-level instead of project-level (only works for one person)</li><li>File too long and instructions buried in the middle</li><li>Path-specific rule glob doesn't match current file</li></ul><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Exam pattern</span>Questions about inconsistent Claude Code behaviour across team members: the answer is almost always a hierarchy/scoping issue — rules in user-level config instead of project-level.</div>"
+          }
+        ],
         skills: [
           {
             text: "Diagnosing configuration hierarchy issues (e.g., a new team member not receiving instructions because they're in user-level rather than project-level configuration)",
-            q: {
-              stem: "A new developer joins your team and reports that Claude Code is not following your team's coding standards. Existing team members don't have this problem. The instructions are in `~/.claude/CLAUDE.md` on the team lead's machine. What is the root cause?",
-              options: [
-                "The new developer needs to restart Claude Code to load the configuration",
-                "User-level `~/.claude/CLAUDE.md` is personal — it only applies to that user and is not shared via version control. The new developer's machine has no such file. Team-wide instructions must be in project-level `.claude/CLAUDE.md` committed to the repository",
-                "The new developer needs to manually copy the CLAUDE.md file from the team lead",
-                "The instructions are in the wrong format and need to be re-written"
-              ],
-              correct: 1,
-              reasoning: "The CLAUDE.md hierarchy: user-level (`~/.claude/CLAUDE.md`) applies only to that specific user and is not shared via version control. Project-level (`.claude/CLAUDE.md` or root `CLAUDE.md`) is committed to the repository and available to all team members. Team-wide standards must be at project level."
-            }
+            questions: [
+              {
+                stem: "A new developer joins your team and reports that Claude Code is not following your team's coding standards. Existing team members don't have this problem. The instructions are in `~/.claude/CLAUDE.md` on the team lead's machine. What is the root cause?",
+                options: [
+                  "The new developer needs to restart Claude Code to load the configuration",
+                  "User-level `~/.claude/CLAUDE.md` is personal — it only applies to that user and is not shared via version control. The new developer's machine has no such file. Team-wide instructions must be in project-level `.claude/CLAUDE.md` committed to the repository",
+                  "The new developer needs to manually copy the CLAUDE.md file from the team lead",
+                  "The instructions are in the wrong format and need to be re-written"
+                ],
+                correct: 1,
+                reasoning: "The CLAUDE.md hierarchy: user-level (`~/.claude/CLAUDE.md`) applies only to that specific user and is not shared via version control. Project-level (`.claude/CLAUDE.md` or root `CLAUDE.md`) is committed to the repository and available to all team members. Team-wide standards must be at project level."
+              },
+              {
+                scenario: "Scenario — Startup Migration to Claude Code",
+                stem: "Your startup has 8 developers. Developer A configured Claude Code with strict security rules in their user-level `~/.claude/CLAUDE.md`. Developer B has no user-level config. When both work on the same repo, Developer A gets security warnings on PRs but Developer B doesn't. The CTO wants consistent security enforcement for everyone. What's the fix?",
+                options: [
+                  "Ask all developers to copy Developer A's `~/.claude/CLAUDE.md` to their machines",
+                  "Move the security rules to project-level `.claude/CLAUDE.md` and commit to the repo — all 8 developers automatically get consistent security enforcement without any per-machine setup",
+                  "Create a setup script that copies the CLAUDE.md to each developer's home directory",
+                  "Put the security rules in a Notion doc and link to it in the README"
+                ],
+                correct: 1,
+                reasoning: "Project-level configuration is the only way to ensure consistent enforcement across all team members. User-level files are per-machine and require manual maintenance — they drift, get forgotten during onboarding, and can't be updated centrally. Committing to the repo means git pull automatically delivers the latest rules to everyone."
+              }
+            ]
           },
           {
             text: "Using @import to selectively include relevant standards files in each package's CLAUDE.md based on maintainer domain knowledge",
@@ -3067,20 +3233,52 @@ const DOMAINS = [
       {
         id: "3.2",
         title: "Create and configure custom slash commands and skills",
+        lesson: [
+          {
+            heading: "Slash commands: project vs user scope",
+            body: "<p>Slash commands are reusable prompts invoked with <code>/command-name</code>:</p><ul><li><strong>Project-scoped</strong> <code>.claude/commands/</code> — version-controlled, shared with team. Use for team workflows (PR review, deployment, testing).</li><li><strong>User-scoped</strong> <code>~/.claude/commands/</code> — personal only. Use for individual productivity shortcuts.</li></ul><p>If a new developer should have the command when they clone the repo, it belongs in project scope.</p>"
+          },
+          {
+            heading: "Skills: context isolation with context: fork",
+            body: "<p>Skills that produce verbose output (codebase analysis, brainstorming) can pollute the main session context. The <code>context: fork</code> frontmatter setting runs the skill in an isolated sub-agent:</p><ul><li>Verbose exploration output stays in the sub-agent's context</li><li>Only the final result is returned to the main session</li><li>Main session context remains clean for subsequent work</li></ul><p>Use for any skill whose intermediate output exceeds what's useful to keep in the main conversation.</p>"
+          },
+          {
+            heading: "allowed-tools: deterministic tool restriction",
+            body: "<p>The <code>allowed-tools</code> frontmatter in a skill restricts which tools are available during execution. This is a <strong>hard boundary</strong>, not a suggestion:</p><ul><li><code>allowed-tools: [Write]</code> → skill can only create/update files, cannot run Bash</li><li><code>allowed-tools: [Read, Grep]</code> → skill is read-only, cannot modify anything</li></ul><p>Use this when a skill should never perform certain actions (e.g., a boilerplate generator should never delete files).</p>"
+          },
+          {
+            heading: "Skills vs CLAUDE.md: when to use each",
+            body: "<p>A common decision:</p><ul><li><strong>CLAUDE.md</strong> — always-loaded universal standards. Coding conventions, style rules, project context. Applied automatically in every session.</li><li><strong>Skills</strong> — on-demand task-specific workflows. Invoked explicitly when needed. Complex procedures that would clutter context if always loaded.</li></ul><p>Rule of thumb: if it should apply every time Claude touches code → CLAUDE.md. If it's a workflow you run occasionally → skill.</p>"
+          }
+        ],
         skills: [
           {
             text: "Creating project-scoped slash commands in .claude/commands/ for team-wide availability via version control",
-            q: {
-              stem: "Your team uses a `/review-pr` slash command that runs a standardised PR review. New developers joining the team don't have this command. Where should it be stored?",
-              options: [
-                "In `~/.claude/commands/` on each developer's machine — document it in the onboarding wiki",
-                "In `.claude/commands/` in the project repository — project-scoped commands are version-controlled and available to all team members automatically when they clone the repo",
-                "In the root `CLAUDE.md` file as a defined workflow",
-                "In a shared Notion document that developers can copy from"
-              ],
-              correct: 1,
-              reasoning: "Project-scoped commands in `.claude/commands/` are version-controlled and available to all team members when they clone the repository — no onboarding step required. User-scoped commands in `~/.claude/commands/` are personal and require manual setup for each developer. Team workflows belong in project scope."
-            }
+            questions: [
+              {
+                stem: "Your team uses a `/review-pr` slash command that runs a standardised PR review. New developers joining the team don't have this command. Where should it be stored?",
+                options: [
+                  "In `~/.claude/commands/` on each developer's machine — document it in the onboarding wiki",
+                  "In `.claude/commands/` in the project repository — project-scoped commands are version-controlled and available to all team members automatically when they clone the repo",
+                  "In the root `CLAUDE.md` file as a defined workflow",
+                  "In a shared Notion document that developers can copy from"
+                ],
+                correct: 1,
+                reasoning: "Project-scoped commands in `.claude/commands/` are version-controlled and available to all team members when they clone the repository — no onboarding step required. User-scoped commands in `~/.claude/commands/` are personal and require manual setup for each developer. Team workflows belong in project scope."
+              },
+              {
+                scenario: "Scenario — Platform Team Standardizing Deployments",
+                stem: "Your platform team creates a `/deploy-service` slash command that handles canary deployments with health checks. They want all 4 product teams to use it, and they want to update the deployment logic centrally when infrastructure changes. Where should this command live?",
+                options: [
+                  "In a shared internal npm package that each team installs",
+                  "In `.claude/commands/deploy-service.md` in the shared infrastructure repo that all service repos reference — version-controlled, centrally updatable, and available to all teams when they pull the latest",
+                  "In each team's repo as a copy of the command file",
+                  "As a system prompt instruction in each team's CLAUDE.md"
+                ],
+                correct: 1,
+                reasoning: "Project-scoped commands in `.claude/commands/` are the standard mechanism for shared team workflows. Storing it in a central repo that teams reference means updates propagate via git pull. Copying to each repo creates drift. System prompt instructions aren't reusable workflows — they're always-loaded context."
+              }
+            ]
           },
           {
             text: "Using context: fork to isolate skills that produce verbose output (e.g., codebase analysis) or exploratory context (e.g., brainstorming alternatives) from the main session",
@@ -3129,6 +3327,20 @@ const DOMAINS = [
       {
         id: "3.3",
         title: "Apply path-specific rules for conditional convention loading",
+        lesson: [
+          {
+            heading: "Path-specific rules with YAML frontmatter",
+            body: "<p>Files in <code>.claude/rules/</code> can include YAML frontmatter with <code>paths</code> to specify when they should load:</p><pre><code>---\npaths:\n  - \"terraform/**/*\"\n---\nAlways use snake_case for resource names...</code></pre><p>The rule only loads when Claude is editing files matching the glob pattern. This keeps irrelevant conventions out of context and reduces token usage.</p>"
+          },
+          {
+            heading: "Glob patterns for file types",
+            body: "<p>Common glob patterns for path-specific rules:</p><ul><li><code>**/*.test.tsx</code> — all test files at any depth</li><li><code>src/api/**/*</code> — everything in the API directory</li><li><code>**/*.sql</code> — all SQL files regardless of location</li><li><code>packages/frontend/**/*</code> — everything in the frontend package</li></ul><p><code>**</code> means any directory depth. <code>*</code> means any filename. Combined, they match files by type regardless of directory structure.</p>"
+          },
+          {
+            heading: "Path-specific rules vs directory CLAUDE.md",
+            body: "<p>When conventions apply to files spread across many directories (e.g., test files next to implementation files), path-specific rules are far superior to directory-level CLAUDE.md:</p><ul><li><strong>One rule file</strong> with <code>paths: [\"**/*.test.tsx\"]</code> covers ALL test files</li><li><strong>Directory CLAUDE.md</strong> would require duplication in every directory containing tests</li></ul><p>Path-specific rules are maintainable (update one file), comprehensive (covers all matching files), and efficient (loads only when relevant).</p>"
+          }
+        ],
         skills: [
           {
             text: "Creating .claude/rules/ files with YAML frontmatter path scoping (e.g., paths: [\"terraform/**/*\"]) so rules load only when editing matching files",
@@ -3177,20 +3389,52 @@ const DOMAINS = [
       {
         id: "3.4",
         title: "Determine when to use plan mode vs direct execution",
+        lesson: [
+          {
+            heading: "Plan mode indicators",
+            body: "<p>Use plan mode when the task has:</p><ul><li><strong>Architectural implications</strong> — choices that constrain future decisions</li><li><strong>Multiple valid approaches</strong> — different tradeoffs need evaluation</li><li><strong>Many files affected</strong> — 10+ files or cross-cutting changes</li><li><strong>Irreversible changes</strong> — database migrations, API contract changes</li><li><strong>Unknown dependencies</strong> — the scope isn't clear until you explore</li></ul><p>Plan mode explores, maps dependencies, and designs an approach before making any changes.</p>"
+          },
+          {
+            heading: "Direct execution indicators",
+            body: "<p>Use direct execution when:</p><ul><li>The change is <strong>well-understood</strong> — clear bug with clear fix</li><li><strong>Single-file scope</strong> — no cascading effects</li><li>The implementation is <strong>deterministic</strong> — only one reasonable approach</li><li>The fix is <strong>low-risk</strong> — easily reversible if wrong</li></ul><p>Classic example: a null pointer exception on a specific line with a clear stack trace. The fix is obvious, the scope is one file, and there's no architectural decision to make.</p>"
+          },
+          {
+            heading: "The plan-then-execute pattern",
+            body: "<p>For large migrations, the correct workflow combines both modes:</p><ol><li><strong>Plan mode</strong> — explore the codebase, understand dependencies, identify affected files, design the migration approach</li><li><strong>Switch to direct execution</strong> — implement the planned changes file by file</li></ol><p>This combines the safety of planning (no costly rework) with the efficiency of execution (no unnecessary deliberation on well-understood changes).</p>"
+          },
+          {
+            heading: "The Explore subagent for context preservation",
+            body: "<p>In multi-phase tasks, verbose exploration output can exhaust the context window before implementation begins. The <strong>Explore subagent</strong> solves this:</p><ul><li>Runs discovery in an isolated context</li><li>Returns a focused summary to the main session</li><li>Preserves main session context for implementation</li></ul><p>Use when exploration will generate more output than you want in your working context.</p>"
+          }
+        ],
         skills: [
           {
             text: "Selecting plan mode for tasks with architectural implications (e.g., microservice restructuring, library migrations affecting 45+ files, choosing between integration approaches with different infrastructure requirements)",
-            q: {
-              stem: "You need to migrate a monolithic application to microservices. This involves restructuring 60+ files, deciding on service boundaries, and choosing between two different API gateway approaches with different infrastructure implications. Which Claude Code mode should you use?",
-              options: [
-                "Direct execution — start implementing and let the natural structure emerge",
-                "Plan mode — explore the codebase, understand dependencies, and design an implementation approach before making any changes. Architectural decisions with 60+ file implications require planning before committing to changes",
-                "Direct execution with comprehensive upfront instructions detailing the target architecture",
-                "Start in direct execution, switch to plan mode only if unexpected complexity emerges"
-              ],
-              correct: 1,
-              reasoning: "Plan mode is designed for tasks with architectural implications, large-scale changes, multiple valid approaches, and multi-file modifications. A microservices migration with 60+ files and architectural decisions is precisely this scenario. Starting with direct execution risks costly rework when dependencies are discovered after changes are already committed."
-            }
+            questions: [
+              {
+                stem: "You need to migrate a monolithic application to microservices. This involves restructuring 60+ files, deciding on service boundaries, and choosing between two different API gateway approaches with different infrastructure implications. Which Claude Code mode should you use?",
+                options: [
+                  "Direct execution — start implementing and let the natural structure emerge",
+                  "Plan mode — explore the codebase, understand dependencies, and design an implementation approach before making any changes. Architectural decisions with 60+ file implications require planning before committing to changes",
+                  "Direct execution with comprehensive upfront instructions detailing the target architecture",
+                  "Start in direct execution, switch to plan mode only if unexpected complexity emerges"
+                ],
+                correct: 1,
+                reasoning: "Plan mode is designed for tasks with architectural implications, large-scale changes, multiple valid approaches, and multi-file modifications. A microservices migration with 60+ files and architectural decisions is precisely this scenario. Starting with direct execution risks costly rework when dependencies are discovered after changes are already committed."
+              },
+              {
+                scenario: "Scenario — Database Schema Redesign",
+                stem: "Your team needs to redesign the user permissions schema from a flat role-based model to a hierarchical RBAC system. This affects 35 files including models, migrations, middleware, API controllers, and test fixtures. Two approaches exist: (A) add a permissions table with foreign keys, or (B) use a graph-based adjacency list. Which mode and why?",
+                options: [
+                  "Direct execution with approach A since it's more conventional",
+                  "Plan mode — the task has architectural implications (35+ files), two valid approaches with different performance/complexity tradeoffs, and cascading dependencies (middleware depends on schema shape). Planning reveals which approach best fits existing query patterns before committing to irreversible migrations",
+                  "Direct execution — implement both approaches in separate branches and compare",
+                  "Plan mode but only for the migration files, direct execution for the rest"
+                ],
+                correct: 1,
+                reasoning: "This has all plan mode indicators: architectural implications, multiple valid approaches with different tradeoffs, many files affected, and irreversible changes (database migrations). Planning lets you analyze existing query patterns, understand the impact on middleware, and choose the approach that aligns with the codebase before writing migrations you can't easily undo."
+              }
+            ]
           },
           {
             text: "Selecting direct execution for well-understood changes with clear scope (e.g., a single-file bug fix with a clear stack trace, adding a date validation conditional)",
@@ -3239,6 +3483,20 @@ const DOMAINS = [
       {
         id: "3.5",
         title: "Apply iterative refinement techniques for progressive improvement",
+        lesson: [
+          {
+            heading: "Concrete examples beat abstract instructions",
+            body: "<p>When natural language descriptions produce inconsistent results (\"format the data consistently\"), the fix is concrete input/output examples:</p><pre><code>Input: {name: \"john smith\", date: \"15/3/2024\"}\nOutput: {name: \"John Smith\", date: \"2024-03-15\"}</code></pre><p>2-3 targeted examples communicate the transformation precisely. The model generalises from examples in ways it cannot from abstract descriptions like \"use proper formatting.\"</p>"
+          },
+          {
+            heading: "Test-driven iteration",
+            body: "<p>The most effective iterative refinement pattern:</p><ol><li>Write a comprehensive test suite first (expected behaviour, edge cases, error conditions)</li><li>Share the test suite with Claude for implementation</li><li>Iterate by sharing <strong>failing tests</strong> — each failure is a precise, unambiguous specification</li></ol><p>A failing test like <code>expect(parseDate('invalid')).toBe(null)</code> is more precise than any prose description. Claude sees exactly what's expected and why its implementation doesn't match.</p>"
+          },
+          {
+            heading: "The interview pattern",
+            body: "<p>For unfamiliar domains (distributed caching, payment processing), use the interview pattern: ask Claude to <strong>interview you</strong> about requirements before implementing.</p><p>Claude will surface considerations you may not have anticipated — cache invalidation strategy, failure modes, consistency requirements, data retention policies.</p><p>This prevents committing to an implementation that's wrong for your specific constraints. The few minutes spent on questions saves hours of rework.</p>"
+          }
+        ],
         skills: [
           {
             text: "Providing 2-3 concrete input/output examples to clarify transformation requirements when natural language descriptions produce inconsistent results",
@@ -3287,20 +3545,48 @@ const DOMAINS = [
       {
         id: "3.6",
         title: "Integrate Claude Code into CI/CD pipelines",
+        lesson: [
+          {
+            heading: "Non-interactive mode with -p",
+            body: "<p>Claude Code's default mode is interactive — it waits for user input in a REPL. In CI/CD pipelines, there's no user to respond, so the job hangs indefinitely.</p><p>The <code>-p</code> (or <code>--print</code>) flag runs Claude Code in non-interactive mode: it processes the prompt, prints output to stdout, and exits. Essential for any automated pipeline integration.</p>"
+          },
+          {
+            heading: "Structured output for automation",
+            body: "<p>Plain text output is hard to parse programmatically. For CI pipelines that need to post inline PR comments:</p><ul><li><code>--output-format json</code> — output as JSON instead of text</li><li><code>--json-schema</code> — specify the exact output schema (file, line_number, severity, message)</li></ul><p>Your pipeline script receives machine-parseable structured findings and maps them directly to GitHub PR comment API calls at specific file locations.</p>"
+          },
+          {
+            heading: "Avoiding duplicate comments across runs",
+            body: "<p>When CI re-runs on every commit push, the same issues get re-posted as new PR comments — creating noise. The fix:</p><p>Include prior review findings in context when re-running, with an instruction to report only <strong>new issues</strong> or issues from the prior run that remain <strong>unaddressed</strong>. Claude compares current findings against prior findings and skips already-reported issues.</p>"
+          }
+        ],
         skills: [
           {
             text: "Running Claude Code in CI with the -p flag to prevent interactive input hangs",
-            q: {
-              stem: "You integrate Claude Code into your GitHub Actions pipeline. The job hangs indefinitely waiting for user input that never comes, causing pipeline timeouts. What is the missing flag?",
-              options: [
-                "`--no-input` to disable input handling",
-                "`--batch` to run in batch mode",
-                "`-p` (or `--print`) flag — this runs Claude Code in non-interactive mode, printing output to stdout and exiting cleanly rather than waiting for interactive input",
-                "`--ci` to enable CI-specific behaviour"
-              ],
-              correct: 2,
-              reasoning: "The `-p` (or `--print`) flag runs Claude Code in non-interactive mode. Without it, Claude Code waits for user input (the interactive REPL), which causes CI pipelines to hang indefinitely. The `-p` flag prints the response to stdout and exits, making it compatible with automated pipeline execution."
-            }
+            questions: [
+              {
+                stem: "You integrate Claude Code into your GitHub Actions pipeline. The job hangs indefinitely waiting for user input that never comes, causing pipeline timeouts. What is the missing flag?",
+                options: [
+                  "`--no-input` to disable input handling",
+                  "`--batch` to run in batch mode",
+                  "`-p` (or `--print`) flag — this runs Claude Code in non-interactive mode, printing output to stdout and exiting cleanly rather than waiting for interactive input",
+                  "`--ci` to enable CI-specific behaviour"
+                ],
+                correct: 2,
+                reasoning: "The `-p` (or `--print`) flag runs Claude Code in non-interactive mode. Without it, Claude Code waits for user input (the interactive REPL), which causes CI pipelines to hang indefinitely. The `-p` flag prints the response to stdout and exits, making it compatible with automated pipeline execution."
+              },
+              {
+                scenario: "Scenario — Automated PR Review Pipeline",
+                stem: "Your team sets up a GitHub Actions workflow that runs Claude Code to review every PR. The first run works but the second PR triggers a race condition: two workflow runs start simultaneously and both try to write review comments. One fails with 'resource conflict'. How do you structure the CI integration correctly?",
+                options: [
+                  "Add a global lock file that prevents concurrent Claude Code runs",
+                  "Use `concurrency: group: pr-review-${{ github.event.pull_request.number }}` in the workflow YAML to ensure only one review runs per PR, and use `-p` with `--output-format json` so each run produces structured findings that your script posts as PR comments without conflicts",
+                  "Queue all reviews to run sequentially using a webhook",
+                  "Run Claude Code in a Docker container to isolate each run"
+                ],
+                correct: 1,
+                reasoning: "GitHub Actions `concurrency` groups prevent parallel runs for the same PR (canceling or queuing duplicates). Combined with `-p` for non-interactive mode and `--output-format json` for structured output, this gives you deterministic, conflict-free CI reviews. Each PR gets exactly one review run, producing machine-parseable results your script can post cleanly."
+              }
+            ]
           },
           {
             text: "Using --output-format json with --json-schema to produce machine-parseable structured findings for automated posting as inline PR comments",
@@ -3343,20 +3629,52 @@ const DOMAINS = [
       {
         id: "4.1",
         title: "Design prompts with explicit criteria to improve precision and reduce false positives",
+        lesson: [
+          {
+            heading: "Why 'be conservative' doesn't work",
+            body: "<p>Abstract directives like \"be conservative,\" \"only report high-confidence findings,\" or \"use good judgement\" don't improve precision. They don't define <strong>what</strong> to flag vs skip — they just add a vague filter on top of an undefined set.</p><p>The fix is always specific categorical criteria: explicit lists of what categories to report and what to skip. The model needs concrete decision boundaries, not abstract guidelines.</p>"
+          },
+          {
+            heading: "Explicit criteria structure",
+            body: "<p>Effective review criteria define two lists:</p><ul><li><strong>Report:</strong> specific categories with examples<br>\"SQL queries not using parameterised inputs\"<br>\"Comments that contradict actual code behaviour\"<br>\"Missing error handling in functions calling external services\"</li><li><strong>Skip:</strong> specific categories to ignore<br>\"Naming style preferences\"<br>\"Comment formatting\"<br>\"Local patterns used consistently in this codebase\"</li></ul><p>Each criterion is testable — you could look at a finding and objectively determine if it matches a Report or Skip category.</p>"
+          },
+          {
+            heading: "The false positive trust problem",
+            body: "<p>High false positive rates in one category undermine trust in the entire system. If developers see 10 bogus style findings, they stop reading — and miss the 1 real security vulnerability in the same batch.</p><p>Tactical fix: temporarily disable high false-positive categories to restore trust in accurate ones. Then improve the noisy category's criteria independently before re-enabling it.</p><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Key insight</span>A review system with fewer but accurate findings is more valuable than one with comprehensive but noisy findings. Developers must trust the output to act on it.</div>"
+          },
+          {
+            heading: "Severity classification with concrete examples",
+            body: "<p>Abstract severity levels (Critical/High/Medium/Low) produce inconsistent classification. The model interprets \"Critical\" differently in different contexts.</p><p>Fix: provide concrete code examples for each severity level. The model matches findings against examples rather than interpreting abstract labels. Example: \"Critical = SQL injection like <code>f'SELECT * FROM users WHERE id = {input}'</code>\"</p>"
+          }
+        ],
         skills: [
           {
             text: "Writing specific review criteria that define which issues to report (bugs, security) versus skip (minor style, local patterns) rather than relying on confidence-based filtering",
-            q: {
-              stem: "Your code review agent flags 60% of all functions with vague \"potential issues.\" Adding \"be conservative\" and \"only report high-confidence findings\" to the system prompt didn't help. What is the correct fix?",
-              options: [
-                "Add a confidence threshold: only surface findings above 85% model confidence",
-                "Replace vague instructions with specific categorical criteria: 'Report: (1) comments that contradict actual code behaviour, (2) missing error handling in functions calling external services, (3) SQL queries not using parameterised inputs. Skip: naming style, comment formatting, minor style preferences, local patterns'",
-                "Run two independent review passes and only flag issues appearing in both",
-                "Use few-shot examples to show the model what conservative review looks like"
-              ],
-              correct: 1,
-              reasoning: "General instructions like 'be conservative' or 'high-confidence only' don't improve precision because they don't define what to flag vs skip. Specific categorical criteria — explicit lists of what to report and what to skip — are what reduce false positives. The model needs to know the specific categories, not an abstract directive about confidence."
-            }
+            questions: [
+              {
+                stem: "Your code review agent flags 60% of all functions with vague \"potential issues.\" Adding \"be conservative\" and \"only report high-confidence findings\" to the system prompt didn't help. What is the correct fix?",
+                options: [
+                  "Add a confidence threshold: only surface findings above 85% model confidence",
+                  "Replace vague instructions with specific categorical criteria: 'Report: (1) comments that contradict actual code behaviour, (2) missing error handling in functions calling external services, (3) SQL queries not using parameterised inputs. Skip: naming style, comment formatting, minor style preferences, local patterns'",
+                  "Run two independent review passes and only flag issues appearing in both",
+                  "Use few-shot examples to show the model what conservative review looks like"
+                ],
+                correct: 1,
+                reasoning: "General instructions like 'be conservative' or 'high-confidence only' don't improve precision because they don't define what to flag vs skip. Specific categorical criteria — explicit lists of what to report and what to skip — are what reduce false positives. The model needs to know the specific categories, not an abstract directive about confidence."
+              },
+              {
+                scenario: "Scenario — Legal Document Review System",
+                stem: "Your legal review agent analyses contracts and flags 'potential risks.' Lawyers complain that 80% of flagged items are standard boilerplate clauses that appear in every contract and aren't actionable. The agent was told to 'flag anything that could be a risk.' How do you reduce false positives without missing real issues?",
+                options: [
+                  "Add 'ignore standard clauses' to the prompt",
+                  "Define explicit criteria: 'Flag: (1) indemnification clauses exceeding $1M without cap, (2) non-compete terms broader than 12 months or 50-mile radius, (3) auto-renewal with >60-day notice period, (4) unilateral termination without cause. Skip: standard confidentiality boilerplate, mutual indemnification under $500K, industry-standard limitation of liability'",
+                  "Train a classifier to filter out boilerplate before the agent sees it",
+                  "Reduce the risk sensitivity parameter to 0.3"
+                ],
+                correct: 1,
+                reasoning: "Explicit categorical criteria with specific thresholds (dollar amounts, time periods, geographic scope) give the agent precise decision boundaries. 'Flag anything risky' is unactionable — every clause has theoretical risk. Specific criteria like 'indemnification exceeding $1M without cap' are precise, testable, and match what lawyers actually care about."
+              }
+            ]
           },
           {
             text: "Temporarily disabling high false-positive categories to restore developer trust while improving prompts for those categories",
@@ -3391,6 +3709,20 @@ const DOMAINS = [
       {
         id: "4.2",
         title: "Apply few-shot prompting to improve output consistency and quality",
+        lesson: [
+          {
+            heading: "When to use few-shot examples",
+            body: "<p>Few-shot examples are most valuable for <strong>ambiguous scenarios</strong> where rules are hard to articulate precisely:</p><ul><li>Edge cases where the correct action isn't obvious from instructions alone</li><li>Decisions that depend on context (\"this pattern is OK here but not there\")</li><li>Varied document structures that require different extraction approaches</li></ul><p>2-4 targeted examples for the ambiguous cases are more effective than exhaustive rules covering every possibility.</p>"
+          },
+          {
+            heading: "Anatomy of an effective few-shot example",
+            body: "<p>Each example should show three things:</p><ol><li><strong>Input</strong> — the exact scenario/document/code being processed</li><li><strong>Output</strong> — the expected result (extraction, classification, action)</li><li><strong>Reasoning</strong> — WHY this output is correct for this input</li></ol><p>The reasoning component is what enables generalisation. Without it, the model can only pattern-match against the exact examples shown — it can't handle novel variations.</p>"
+          },
+          {
+            heading: "Teaching decision boundaries",
+            body: "<p>The most powerful use of few-shot examples: showing the <strong>boundary</strong> between two categories. Instead of rules like \"flag empty catch blocks,\" show:</p><ul><li>Example 1: Empty catch in production payment code → <strong>flag</strong> (data loss risk)</li><li>Example 2: Empty catch in test teardown → <strong>skip</strong> (intentional, failures shouldn't propagate)</li></ul><p>This teaches the model that context matters — the same code pattern has different meanings in different locations.</p>"
+          }
+        ],
         skills: [
           {
             text: "Creating 2-4 targeted few-shot examples for ambiguous scenarios that show reasoning for why one action was chosen over plausible alternatives",
@@ -3439,20 +3771,48 @@ const DOMAINS = [
       {
         id: "4.3",
         title: "Enforce structured output using tool use and JSON schemas",
+        lesson: [
+          {
+            heading: "Required fields cause hallucination",
+            body: "<p>This is the single most common schema design mistake: marking fields as <code>required</code> when the source document may not contain that information. When a required field is absent from the source, the model <strong>fabricates a plausible value</strong> to satisfy the schema constraint.</p><p>Fix: make fields nullable (<code>\"type\": [\"string\", \"null\"]</code>) when the information may legitimately be absent. The model returns <code>null</code> honestly rather than inventing data.</p>"
+          },
+          {
+            heading: "The 'other' + detail pattern",
+            body: "<p>Closed enums fail when encountering values not anticipated at design time. A <code>contract_type</code> enum of <code>[\"employment\", \"vendor\", \"partnership\"]</code> has no valid option for a joint venture agreement.</p><p>Fix: add <code>\"other\"</code> to the enum plus a companion <code>contract_type_detail</code> string field. The model returns <code>other</code> to signal an unexpected category, and populates the detail field with the actual value. This keeps the enum typed while gracefully handling extensibility.</p>"
+          },
+          {
+            heading: "tool_choice for guaranteed structure",
+            body: "<p>With <code>tool_choice: \"auto\"</code> (default), Claude may return conversational text instead of calling a tool. For extraction pipelines that need guaranteed structured output:</p><ul><li><code>tool_choice: \"any\"</code> — forces a tool call, Claude chooses which tool</li><li><code>tool_choice: {\"name\": \"...\"}</code> — forces a specific tool</li></ul><p>Use <code>\"any\"</code> when you have multiple extraction tools and the document type is unknown. Use forced name when you need a specific schema regardless of input.</p>"
+          }
+        ],
         skills: [
           {
             text: "Designing schema fields as optional (nullable) when source documents may not contain the information, preventing the model from fabricating values to satisfy required fields",
-            q: {
-              stem: "Your invoice extraction schema has `purchase_order_number` marked as `required`. For 20% of invoices, there is no PO number — the vendor didn't include one. The agent is fabricating PO numbers to satisfy the required field constraint. What is the correct fix?",
-              options: [
-                "Add to the prompt: 'If a PO number is not found, use N/A'",
-                "Make `purchase_order_number` optional/nullable in the schema (`\"type\": [\"string\", \"null\"]`). When the document contains no PO number, the model correctly returns `null` rather than fabricating a value to satisfy a required field constraint",
-                "Add validation to reject PO numbers that don't match your expected format",
-                "Create a separate extraction tool specifically for invoices without PO numbers"
-              ],
-              correct: 1,
-              reasoning: "Marking fields as `required` when the information is sometimes absent forces the model to fabricate values — it will hallucinate plausible-looking data to satisfy the schema constraint. Fields that may legitimately be absent must be optional/nullable so the model can return `null` without violating the schema. This is the most common schema design mistake in extraction tasks."
-            }
+            questions: [
+              {
+                stem: "Your invoice extraction schema has `purchase_order_number` marked as `required`. For 20% of invoices, there is no PO number — the vendor didn't include one. The agent is fabricating PO numbers to satisfy the required field constraint. What is the correct fix?",
+                options: [
+                  "Add to the prompt: 'If a PO number is not found, use N/A'",
+                  "Make `purchase_order_number` optional/nullable in the schema (`\"type\": [\"string\", \"null\"]`). When the document contains no PO number, the model correctly returns `null` rather than fabricating a value to satisfy a required field constraint",
+                  "Add validation to reject PO numbers that don't match your expected format",
+                  "Create a separate extraction tool specifically for invoices without PO numbers"
+                ],
+                correct: 1,
+                reasoning: "Marking fields as `required` when the information is sometimes absent forces the model to fabricate values — it will hallucinate plausible-looking data to satisfy the schema constraint. Fields that may legitimately be absent must be optional/nullable so the model can return `null` without violating the schema. This is the most common schema design mistake in extraction tasks."
+              },
+              {
+                scenario: "Scenario — Insurance Claims Processing",
+                stem: "Your insurance claims extraction schema requires `witness_name`, `witness_phone`, and `police_report_number`. For minor fender-benders, there are no witnesses and no police report. The agent invents plausible-sounding witness names and generates fake report numbers like 'RPT-2024-00001'. Claims adjusters are furious about the fabricated data. What's the schema fix?",
+                options: [
+                  "Add validation rules to cross-check witness names against a database",
+                  "Make `witness_name`, `witness_phone`, and `police_report_number` nullable (`\"type\": [\"string\", \"null\"]`) — when these fields are absent from the claim form, the model returns `null` honestly rather than fabricating data to satisfy required constraints. Add `has_witnesses: boolean` and `has_police_report: boolean` as required fields instead",
+                  "Add a prompt instruction: 'If no witness is mentioned, write NONE'",
+                  "Create separate schemas for claims with and without witnesses"
+                ],
+                correct: 1,
+                reasoning: "Required fields that are sometimes absent cause hallucination — the model will fabricate realistic-looking data to satisfy the schema. Making these fields nullable lets the model honestly return null. Adding boolean indicators (`has_witnesses`, `has_police_report`) as required fields gives downstream systems clear signals about what data is available without forcing fabrication."
+              }
+            ]
           },
           {
             text: "Adding enum values like \"unclear\" for ambiguous cases and \"other\" + detail fields for extensible categorization",
@@ -3487,20 +3847,48 @@ const DOMAINS = [
       {
         id: "4.4",
         title: "Implement validation, retry, and feedback loops for extraction quality",
+        lesson: [
+          {
+            heading: "Effective retry prompts",
+            body: "<p>When extraction fails validation, the retry prompt must include three things:</p><ol><li><strong>Original document</strong> — so the model can re-extract from source</li><li><strong>Failed extraction</strong> — showing what specifically went wrong</li><li><strong>Specific validation error</strong> — with expected format and correction</li></ol><p>\"Please fix your response\" alone is useless — the model doesn't know what failed. \"The <code>invoice_date</code> field must use YYYY-MM-DD format. You returned '15 Jan 2024' — correct value is '2024-01-15'\" is actionable.</p>"
+          },
+          {
+            heading: "When retries won't help",
+            body: "<p>Retries are effective for <strong>format/structural errors</strong> (information exists but was formatted incorrectly). Retries are <strong>ineffective</strong> when:</p><ul><li>Information is genuinely absent from the provided document</li><li>The document references an external source not provided</li><li>The required data doesn't exist in any form in the input</li></ul><p>Recognising this distinction prevents wasted retry attempts. If the field is null after 2 retries with specific error context, the data likely isn't there — route to human review.</p><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Exam pattern</span>Questions about retries failing repeatedly: check whether the required information actually exists in the provided document. If not, retrying will never succeed.</div>"
+          },
+          {
+            heading: "Self-correction in extraction schemas",
+            body: "<p>Build self-correction directly into the schema by extracting both raw values and derived/validated versions:</p><ul><li><code>stated_total</code> — what the document says the total is</li><li><code>calculated_total</code> — sum of extracted line items</li><li><code>conflict_detected</code> — boolean flag when they don't match</li></ul><p>This surfaces discrepancies at extraction time as part of the structured output, without requiring a separate validation pass.</p>"
+          }
+        ],
         skills: [
           {
             text: "Implementing follow-up requests that include the original document, the failed extraction, and specific validation errors for model self-correction",
-            q: {
-              stem: "Your extraction agent returns `{\"invoice_date\": \"15 Jan 2024\"}` but your schema requires ISO 8601 format. Validation fails. You retry by sending `\"Please fix your previous response.\"` The model returns the same format. What should the retry prompt include?",
-              options: [
-                "The schema definition again so the model can re-read the format requirement",
-                "The original document, the failed extraction, and the specific error: 'The `invoice_date` field must use ISO 8601 format (YYYY-MM-DD). You returned \"15 Jan 2024\" — the correct value is \"2024-01-15\".' Specific error context gives the model something actionable to correct",
-                "A few-shot example of correctly formatted date extraction",
-                "The full validation error log including stack trace"
-              ],
-              correct: 1,
-              reasoning: "Generic retry prompts ('fix your response') don't give the model enough context to know what specifically failed. The retry must include: the original document (for re-extraction), the failed extraction (showing what went wrong), and the specific validation error with the expected format. This gives the model precise, actionable information for self-correction."
-            }
+            questions: [
+              {
+                stem: "Your extraction agent returns `{\"invoice_date\": \"15 Jan 2024\"}` but your schema requires ISO 8601 format. Validation fails. You retry by sending `\"Please fix your previous response.\"` The model returns the same format. What should the retry prompt include?",
+                options: [
+                  "The schema definition again so the model can re-read the format requirement",
+                  "The original document, the failed extraction, and the specific error: 'The `invoice_date` field must use ISO 8601 format (YYYY-MM-DD). You returned \"15 Jan 2024\" — the correct value is \"2024-01-15\".' Specific error context gives the model something actionable to correct",
+                  "A few-shot example of correctly formatted date extraction",
+                  "The full validation error log including stack trace"
+                ],
+                correct: 1,
+                reasoning: "Generic retry prompts ('fix your response') don't give the model enough context to know what specifically failed. The retry must include: the original document (for re-extraction), the failed extraction (showing what went wrong), and the specific validation error with the expected format. This gives the model precise, actionable information for self-correction."
+              },
+              {
+                scenario: "Scenario — Medical Records Extraction Pipeline",
+                stem: "Your medical records agent extracts patient vitals from clinical notes. It returns `{\"blood_pressure\": \"120/80\"}` but your schema requires separate `systolic` and `diastolic` integer fields. The first retry sends 'Blood pressure should be two separate fields.' The agent returns `{\"blood_pressure_systolic\": \"120\", \"blood_pressure_diastolic\": \"80\"}` — wrong field names and string types instead of integers. What should the second retry include?",
+                options: [
+                  "The full JSON schema definition so the model can see the exact field names",
+                  "The original clinical note, the failed extraction, and the specific errors: 'Field names must be exactly `systolic` and `diastolic` (not blood_pressure_systolic). Values must be integers (120, not \"120\"). Your extraction: {blood_pressure_systolic: \"120\"...}. Expected: {systolic: 120, diastolic: 80}.' Include the original document so the model can re-extract correctly",
+                  "Just the correct example output: `{\"systolic\": 120, \"diastolic\": 80}`",
+                  "A request to start over from scratch ignoring previous attempts"
+                ],
+                correct: 1,
+                reasoning: "Effective retry prompts include three elements: (1) the original document for re-extraction, (2) the specific failed output showing what went wrong, and (3) explicit correction showing the exact field names, types, and expected format. Without all three, the model may fix one error while introducing another. The original document is essential — the model needs to re-extract from source, not guess from the error message."
+              }
+            ]
           },
           {
             text: "Identifying when retries will be ineffective (e.g., information exists only in an external document not provided) versus when they will succeed (format mismatches, structural output errors)",
@@ -3535,6 +3923,16 @@ const DOMAINS = [
       {
         id: "4.5",
         title: "Design efficient batch processing strategies",
+        lesson: [
+          {
+            heading: "Message Batches API: 50% savings, 24h latency",
+            body: "<p>The Message Batches API processes requests at 50% of the standard cost, but with no guaranteed latency SLA — results may take up to 24 hours. This creates a strict compatibility rule:</p><ul><li><strong>Compatible:</strong> overnight analysis, weekly reports, non-blocking bulk processing</li><li><strong>Incompatible:</strong> blocking pre-merge checks, real-time user requests, anything where someone waits for the result</li></ul><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Exam pattern</span>Questions about Batches API always test whether you can identify which workflows are latency-tolerant (batch-compatible) vs which are blocking (must use synchronous API).</div>"
+          },
+          {
+            heading: "Handling batch failures with custom_id",
+            body: "<p>Each request in a batch has a <code>custom_id</code> that correlates results with source documents. When some items fail:</p><ol><li>Use <code>custom_id</code> to identify exactly which documents failed</li><li>Diagnose why (context limit? validation error? transient failure?)</li><li>Modify the failing items (chunk large documents, fix format issues)</li><li>Resubmit ONLY the failures — never resubmit already-successful items</li></ol><p>This selective resubmission pattern is cost-efficient and preserves successful results.</p>"
+          }
+        ],
         skills: [
           {
             text: "Matching API approach to workflow latency requirements: synchronous API for blocking pre-merge checks, batch API for overnight/weekly analysis",
@@ -3569,20 +3967,48 @@ const DOMAINS = [
       {
         id: "4.6",
         title: "Design multi-instance and multi-pass review architectures",
+        lesson: [
+          {
+            heading: "Why self-review is less effective",
+            body: "<p>When the same Claude instance generates code and then reviews it in the next turn, it retains its <strong>reasoning context</strong> — it knows why it made each decision. This creates blind spots: it won't challenge assumptions it already committed to.</p><p>An independent reviewing instance has no such context. It evaluates the code on its own merits and is more likely to catch:</p><ul><li>Edge cases the generator didn't consider</li><li>Assumptions that seemed reasonable during generation but are actually wrong</li><li>Missing validation or error handling that the generator rationalized away</li></ul>"
+          },
+          {
+            heading: "Per-file passes + integration passes",
+            body: "<p>Large multi-file PRs reviewed in a single pass suffer from <strong>attention dilution</strong>: each file gets less focused analysis, and cross-file relationships are missed.</p><p>The correct architecture:</p><ul><li><strong>Per-file passes:</strong> each file reviewed individually for local issues (bugs, style, logic) with full attention</li><li><strong>Integration pass:</strong> a separate pass focused specifically on cross-file concerns (data flow, type compatibility, interface contracts)</li></ul><p>Per-file passes give consistent local depth. The integration pass catches issues that only emerge from relationships between files.</p>"
+          },
+          {
+            heading: "Attention dilution in large reviews",
+            body: "<p>When a single review pass processes 30+ files simultaneously, the depth of analysis for each file becomes inconsistent. Files at the beginning and end get more attention; files in the middle get less (the \"lost in the middle\" effect).</p><p>Splitting into per-file passes ensures every file gets the same quality of analysis regardless of PR size or file position.</p><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Key insight</span>The solution to attention dilution is architectural (per-file passes) not parameter-based (larger context window). A bigger window doesn't fix uneven attention distribution.</div>"
+          }
+        ],
         skills: [
           {
             text: "Using a second independent Claude instance to review generated code without the generator's reasoning context",
-            q: {
-              stem: "Your team generates code with Claude and then asks the same Claude instance in the next turn to review it. A senior engineer argues this is less effective than using a separate instance. Why?",
-              options: [
-                "The reviewing instance will always approve its own code to avoid contradicting itself",
-                "The generating instance retains reasoning context — it knows why it made each decision, creating blind spots. An independent reviewing instance without that reasoning context approaches the code fresh and is more likely to catch subtle issues the generator rationalised away",
-                "The same instance reviewing its own code doubles the cost without quality benefit",
-                "The reviewing instance lacks access to the full codebase context the generator used"
-              ],
-              correct: 1,
-              reasoning: "Self-review in the same session is less effective because the model retains its reasoning context from generation. It 'knows' why it wrote the code a certain way and is less likely to question those decisions. An independent instance has no such context — it evaluates the code on its own merits and is more likely to identify assumptions, edge cases, and design issues the generator overlooked."
-            }
+            questions: [
+              {
+                stem: "Your team generates code with Claude and then asks the same Claude instance in the next turn to review it. A senior engineer argues this is less effective than using a separate instance. Why?",
+                options: [
+                  "The reviewing instance will always approve its own code to avoid contradicting itself",
+                  "The generating instance retains reasoning context — it knows why it made each decision, creating blind spots. An independent reviewing instance without that reasoning context approaches the code fresh and is more likely to catch subtle issues the generator rationalised away",
+                  "The same instance reviewing its own code doubles the cost without quality benefit",
+                  "The reviewing instance lacks access to the full codebase context the generator used"
+                ],
+                correct: 1,
+                reasoning: "Self-review in the same session is less effective because the model retains its reasoning context from generation. It 'knows' why it wrote the code a certain way and is less likely to question those decisions. An independent instance has no such context — it evaluates the code on its own merits and is more likely to identify assumptions, edge cases, and design issues the generator overlooked."
+              },
+              {
+                scenario: "Scenario — Payment Processing Security Review",
+                stem: "Your payment team uses Claude to generate Stripe integration code. The same session then reviews it and says 'The code correctly handles all edge cases.' A security audit later reveals the code doesn't validate webhook signatures, allowing replay attacks. Why did the self-review miss this?",
+                options: [
+                  "The model doesn't know about Stripe webhook signatures",
+                  "The generating instance decided webhook validation wasn't needed (perhaps reasoning 'we're behind a firewall') and retained that reasoning during review — it won't challenge its own prior decision. An independent reviewer without that context would ask 'why are webhook signatures not validated?' because it evaluates the code fresh without the generator's assumptions",
+                  "The review prompt should have mentioned webhooks specifically",
+                  "Self-review works but needs a more detailed security checklist"
+                ],
+                correct: 1,
+                reasoning: "This is a textbook example of reasoning context creating blind spots. The generator made an implicit assumption (perhaps 'webhook validation isn't needed here') and that assumption persists in its review. An independent instance sees only the code and immediately notices the missing validation — it has no prior reasoning to rationalize the omission away."
+              }
+            ]
           },
           {
             text: "Splitting large multi-file reviews into focused per-file passes for local issues plus separate integration passes for cross-file data flow analysis",
@@ -3611,20 +4037,52 @@ const DOMAINS = [
       {
         id: "5.1",
         title: "Manage conversation context to preserve critical information across long interactions",
+        lesson: [
+          {
+            heading: "The progressive summarisation problem",
+            body: "<p>In long conversations, older messages get progressively summarised to fit context limits. Summaries preserve narrative flow but lose <strong>exact values</strong>: a specific £47.50 refund amount becomes \"the disputed amount\" or \"approximately £50.\"</p><p>For customer support, financial operations, and any domain where exact values matter, this precision loss causes errors — processing the wrong amount, referencing the wrong order, or contradicting earlier facts.</p>"
+          },
+          {
+            heading: "Case facts blocks",
+            body: "<p>The solution: extract transactional facts into a persistent block that sits <strong>outside</strong> the summarised history:</p><pre><code>CASE FACTS:\n- Order: #ORD-7291\n- Amount: £47.50\n- Date: 2024-03-15\n- Status: refund_approved\n- Customer: John Smith (ID: C-4821)</code></pre><p>This block is included verbatim in every prompt and is never summarised. The narrative can be compressed freely because all precision-critical data lives in the persistent block.</p>"
+          },
+          {
+            heading: "Trimming verbose tool outputs",
+            body: "<p>Tool outputs accumulate in context. An order lookup returning 40+ fields per order × 10 lookups = massive context consumption with mostly irrelevant data.</p><p>Fix: trim tool outputs to only task-relevant fields <strong>before</strong> appending to context. For a returns conversation, keep: status, return_eligibility, purchase_date, amount. Discard: internal warehouse flags, historical status changes, shipping manifests.</p><p>5 relevant fields serve the task better than 40 irrelevant fields that push earlier critical information out of context.</p>"
+          },
+          {
+            heading: "The lost-in-the-middle effect",
+            body: "<p>Models process information at the beginning and end of long inputs most reliably. Content in the middle receives less attention.</p><p>Mitigations:</p><ul><li>Place key findings summaries at the <strong>start</strong> of aggregated inputs</li><li>Use explicit section headers to create cognitive anchors throughout</li><li>Don't bury critical content in the middle of long documents</li></ul>"
+          }
+        ],
         skills: [
           {
             text: "Extracting transactional facts (amounts, dates, order numbers, statuses) into a persistent \"case facts\" block included in each prompt, outside summarized history",
-            q: {
-              stem: "After 40 turns of a customer support conversation, your agent incorrectly disputes a refund amount the customer mentioned in turn 3. The conversation history has been progressively summarised and that specific amount was lost in summarisation. What architectural pattern prevents this?",
-              options: [
-                "Never summarise conversation history — always keep full history",
-                "Extract transactional facts (amounts, dates, order numbers, statuses) into a persistent 'case facts' block that is included in every prompt alongside summarised history, and is never itself summarised. The specific £47.50 refund amount is preserved exactly, regardless of how many times the narrative history is compressed",
-                "Increase the summarisation frequency so amounts appear in more recent context",
-                "Ask the customer to repeat key amounts at the start of each response"
-              ],
-              correct: 1,
-              reasoning: "Progressive summarisation compresses narrative but loses exact values. Transactional facts — specific amounts, dates, IDs, statuses — must be extracted into a separate persistent block that sits outside the summarised history and is never compressed. This block is included verbatim in every prompt, preserving precision throughout the conversation regardless of length."
-            }
+            questions: [
+              {
+                stem: "After 40 turns of a customer support conversation, your agent incorrectly disputes a refund amount the customer mentioned in turn 3. The conversation history has been progressively summarised and that specific amount was lost in summarisation. What architectural pattern prevents this?",
+                options: [
+                  "Never summarise conversation history — always keep full history",
+                  "Extract transactional facts (amounts, dates, order numbers, statuses) into a persistent 'case facts' block that is included in every prompt alongside summarised history, and is never itself summarised. The specific £47.50 refund amount is preserved exactly, regardless of how many times the narrative history is compressed",
+                  "Increase the summarisation frequency so amounts appear in more recent context",
+                  "Ask the customer to repeat key amounts at the start of each response"
+                ],
+                correct: 1,
+                reasoning: "Progressive summarisation compresses narrative but loses exact values. Transactional facts — specific amounts, dates, IDs, statuses — must be extracted into a separate persistent block that sits outside the summarised history and is never compressed. This block is included verbatim in every prompt, preserving precision throughout the conversation regardless of length."
+              },
+              {
+                scenario: "Scenario — Banking Dispute Resolution Agent",
+                stem: "A customer calls about three disputed transactions: $142.50 on March 3 at Amazon, $89.99 on March 5 at Netflix, and $2,340.00 on March 7 at an unknown merchant. After 25 turns investigating, the agent processes a refund for $142.50 (Amazon) but accidentally applies it to the $89.99 Netflix charge because the conversation summary merged the first two transactions into 'two small charges around $100-150.' How do you prevent this?",
+                options: [
+                  "Keep the full conversation history without any summarisation",
+                  "Extract each disputed transaction into a structured case facts block: `[{amount: $142.50, date: March 3, merchant: Amazon, status: refund_approved}, {amount: $89.99, date: March 5, merchant: Netflix, status: investigating}, {amount: $2340.00, date: March 7, merchant: unknown, status: investigating}]` — persisted verbatim outside summarised history, updated as statuses change",
+                  "Ask the customer to confirm transaction details before each action",
+                  "Limit dispute conversations to 10 turns maximum"
+                ],
+                correct: 1,
+                reasoning: "Structured case facts blocks preserve exact transactional data (amounts, dates, merchants, statuses) outside the summarised narrative. When the conversation summary loses precision ('two small charges around $100-150'), the case facts block still has the exact figures. The agent references the structured block for actions, not the compressed narrative."
+              }
+            ]
           },
           {
             text: "Trimming verbose tool outputs to only relevant fields before they accumulate in context (e.g., keeping only return-relevant fields from order lookups)",
@@ -3659,20 +4117,48 @@ const DOMAINS = [
       {
         id: "5.2",
         title: "Design effective escalation and ambiguity resolution patterns",
+        lesson: [
+          {
+            heading: "Three escalation triggers",
+            body: "<p>Agents should escalate to humans in three situations:</p><ol><li><strong>Explicit request</strong> — customer asks for a human agent. Honor immediately, regardless of sentiment scores or whether the agent could resolve it.</li><li><strong>Policy gap</strong> — the customer's request isn't covered by available policies. The agent cannot make unbacked policy decisions.</li><li><strong>Ambiguous data</strong> — multiple matches, conflicting information, or insufficient data to make a confident decision.</li></ol><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Critical rule</span>Explicit escalation requests override ALL other criteria — sentiment scores, resolution capability, queue times. The customer's explicit request is authoritative.</div>"
+          },
+          {
+            heading: "Policy gaps: the silent escalation trigger",
+            body: "<p>When a customer requests something the policy document doesn't address (e.g., competitor price matching when policy only covers own-site adjustments), the agent must not:</p><ul><li>Approve (making up policy that doesn't exist)</li><li>Deny (blocking something that might be allowed)</li></ul><p>The correct action is escalate: \"I need to check with the right team about this specific situation.\" The agent acknowledges the request, explains it's outside its authority, and routes to someone who can make the decision.</p>"
+          },
+          {
+            heading: "Multiple matches: never use heuristics",
+            body: "<p>When a tool returns multiple matching records (4 customers named \"John Smith\"), the agent must ask for additional identifiers — email, order number, postcode — to disambiguate.</p><p>Never select using heuristics like:</p><ul><li>Most recently active account</li><li>Alphabetical order</li><li>Account with the most orders</li></ul><p>These heuristics risk acting on the wrong record, causing data privacy violations and incorrect operations.</p>"
+          }
+        ],
         skills: [
           {
             text: "Honoring explicit customer requests for human agents immediately without first attempting investigation",
-            q: {
-              stem: "A frustrated customer says: 'I don't want to deal with a bot. Connect me to a real person right now.' Your agent's escalation criteria trigger only when sentiment analysis scores frustration above 0.8. The sentiment score is 0.72. What should happen?",
-              options: [
-                "Attempt to resolve the issue first since the sentiment threshold wasn't reached",
-                "Escalate immediately — explicit customer requests for a human agent must be honoured regardless of sentiment scores, thresholds, or whether the issue could be resolved autonomously. The customer's explicit request overrides all other criteria",
-                "Acknowledge the request but explain the agent can resolve the issue faster",
-                "Ask the customer to confirm they want to escalate before doing so"
-              ],
-              correct: 1,
-              reasoning: "Explicit customer requests for a human agent must be honoured immediately. Sentiment thresholds are supplementary signals for detecting frustration when customers don't explicitly ask to escalate — they are not gatekeepers that can override an explicit request. Making a customer repeat 'give me a human agent' multiple times violates this principle and damages trust."
-            }
+            questions: [
+              {
+                stem: "A frustrated customer says: 'I don't want to deal with a bot. Connect me to a real person right now.' Your agent's escalation criteria trigger only when sentiment analysis scores frustration above 0.8. The sentiment score is 0.72. What should happen?",
+                options: [
+                  "Attempt to resolve the issue first since the sentiment threshold wasn't reached",
+                  "Escalate immediately — explicit customer requests for a human agent must be honoured regardless of sentiment scores, thresholds, or whether the issue could be resolved autonomously. The customer's explicit request overrides all other criteria",
+                  "Acknowledge the request but explain the agent can resolve the issue faster",
+                  "Ask the customer to confirm they want to escalate before doing so"
+                ],
+                correct: 1,
+                reasoning: "Explicit customer requests for a human agent must be honoured immediately. Sentiment thresholds are supplementary signals for detecting frustration when customers don't explicitly ask to escalate — they are not gatekeepers that can override an explicit request. Making a customer repeat 'give me a human agent' multiple times violates this principle and damages trust."
+              },
+              {
+                scenario: "Scenario — Telecom Billing Support Agent",
+                stem: "A customer messages: 'I've been charged twice for my plan this month. I want to speak to a manager.' Your agent has the tools to check billing, verify the double charge, and issue a credit instantly — a 2-minute fix. The escalation to a manager has a 45-minute wait. Should the agent attempt to resolve it first since it can fix the problem faster?",
+                options: [
+                  "Yes — resolve the double charge first, then ask if they still want a manager",
+                  "No — the customer explicitly requested a manager. Honor the request immediately. Inform them of the wait time and offer: 'I can connect you to a manager (estimated 45-minute wait). I can also resolve the duplicate charge right now if you'd prefer — I can see the $49.99 double charge on your account.' Let the customer decide",
+                  "Resolve it silently and then say 'I've already fixed it, no need for a manager'",
+                  "Escalate without mentioning the agent could fix it faster"
+                ],
+                correct: 1,
+                reasoning: "Honor the explicit escalation request but you can inform the customer of their options. Present the facts: 'I can connect you to a manager (45-min wait) or I can resolve the duplicate charge now.' The customer decides. Never block escalation, never silently override it, but offering an alternative transparently is acceptable — the key is the customer retains control."
+              }
+            ]
           },
           {
             text: "Escalating when policy is ambiguous or silent on the customer's specific request (e.g., competitor price matching when policy only addresses own-site adjustments)",
@@ -3707,20 +4193,48 @@ const DOMAINS = [
       {
         id: "5.3",
         title: "Implement error propagation strategies across multi-agent systems",
+        lesson: [
+          {
+            heading: "Structured error context for coordinators",
+            body: "<p>When a subagent fails, its error report to the coordinator must include enough context for intelligent recovery:</p><ul><li><strong>Failure type</strong> — timeout, rate limit, permission denied, data not found</li><li><strong>What was attempted</strong> — specific query, parameters, target</li><li><strong>Partial results</strong> — anything obtained before failure</li><li><strong>isRetryable</strong> — can the same operation succeed if tried again?</li><li><strong>Alternatives</strong> — other approaches that might work</li></ul><p>Generic messages like <code>{\"error\": \"search failed\"}</code> give the coordinator no basis for recovery beyond \"try again\" or \"give up.\"</p>"
+          },
+          {
+            heading: "Access failures vs empty results",
+            body: "<p>A fundamental distinction that affects coordinator decisions:</p><ul><li><strong>Access failure:</strong> tool couldn't connect, timed out, hit rate limit → error, may be retryable</li><li><strong>Valid empty result:</strong> tool connected and ran successfully, found zero matches → success, no retry needed</li></ul><p>Mixing these up causes wrong coordinator behaviour: retrying valid empty results (wasted effort) or abandoning access failures without retry (premature give-up).</p>"
+          },
+          {
+            heading: "Coverage annotations in synthesis",
+            body: "<p>When subagents fail or return empty results for some subtopics, the synthesis agent must <strong>flag the gaps</strong> rather than silently omitting them.</p><p>A report covering 4 of 6 research subtopics should explicitly note: \"Subtopics X and Y have coverage gaps — source retrieval returned no results for these areas.\"</p><p>Silent omission misleads readers into thinking coverage is complete. Coverage annotations are honest about reliability and help users know where to seek additional information.</p>"
+          }
+        ],
         skills: [
           {
             text: "Returning structured error context including failure type, what was attempted, partial results, and potential alternatives to enable coordinator recovery",
-            q: {
-              stem: "Your web search subagent times out. It returns `{\"error\": \"search failed\"}` to the coordinator. The coordinator marks the entire research task as failed and terminates. What should the error response have included?",
-              options: [
-                "A full stack trace of the timeout error",
-                "Structured error context: failure type (timeout), what was attempted (specific query and parameters), any partial results obtained before timeout, isRetryable (true for transient), and suggested alternatives (retry with narrower query, use cached results). This enables intelligent coordinator recovery rather than total failure",
-                "A simple flag `{\"should_retry\": true}` to trigger automatic retry",
-                "The subagent should have silently retried before reporting to the coordinator"
-              ],
-              correct: 1,
-              reasoning: "Generic error messages like 'search failed' give the coordinator no basis for intelligent recovery. Structured error context — what specifically failed, what was attempted, any partial results, whether retry is viable, and alternatives — allows the coordinator to make informed decisions: retry with a narrower query, use partial results with a coverage annotation, or escalate."
-            }
+            questions: [
+              {
+                stem: "Your web search subagent times out. It returns `{\"error\": \"search failed\"}` to the coordinator. The coordinator marks the entire research task as failed and terminates. What should the error response have included?",
+                options: [
+                  "A full stack trace of the timeout error",
+                  "Structured error context: failure type (timeout), what was attempted (specific query and parameters), any partial results obtained before timeout, isRetryable (true for transient), and suggested alternatives (retry with narrower query, use cached results). This enables intelligent coordinator recovery rather than total failure",
+                  "A simple flag `{\"should_retry\": true}` to trigger automatic retry",
+                  "The subagent should have silently retried before reporting to the coordinator"
+                ],
+                correct: 1,
+                reasoning: "Generic error messages like 'search failed' give the coordinator no basis for intelligent recovery. Structured error context — what specifically failed, what was attempted, any partial results, whether retry is viable, and alternatives — allows the coordinator to make informed decisions: retry with a narrower query, use partial results with a coverage annotation, or escalate."
+              },
+              {
+                scenario: "Scenario — Multi-Source Market Research Pipeline",
+                stem: "Your research coordinator delegates to 5 subagents: SEC filings, news articles, patent databases, social media sentiment, and industry reports. The patent database subagent hits a rate limit after processing 3 of 8 patent families. It returns `{\"error\": \"rate limited\"}`. The coordinator abandons all patent research and the final report says 'Patent landscape: no data available.' What should have happened?",
+                options: [
+                  "The subagent should have waited and retried until the rate limit cleared",
+                  "The subagent should have returned: `{failureType: \"rate_limit\", isRetryable: true, attempted: \"8 patent families\", partialResults: [{family: \"AI-vision\", patents: 12}, {family: \"NLP-core\", patents: 8}, {family: \"robotics\", patents: 5}], completedCount: 3, remainingCount: 5, suggestedAction: \"retry remaining 5 families after 60s cooldown\"}` — the coordinator uses partial results now and retries the rest",
+                  "The coordinator should have pre-allocated more API quota for patent searches",
+                  "The patent subagent should switch to a different patent database automatically"
+                ],
+                correct: 1,
+                reasoning: "Structured error responses with partial results prevent total-failure thinking. The coordinator can immediately use the 3 completed patent families in the report (with a coverage annotation noting 5 families pending), and schedule a retry for the remaining 5. Without partial results, the coordinator assumes zero progress and reports 'no data' — a much worse outcome than '3 of 8 families analyzed.'"
+              }
+            ]
           },
           {
             text: "Distinguishing access failures from valid empty results in error reporting so the coordinator can make appropriate decisions",
@@ -3755,20 +4269,48 @@ const DOMAINS = [
       {
         id: "5.4",
         title: "Manage context effectively in large codebase exploration",
+        lesson: [
+          {
+            heading: "Context degradation in long sessions",
+            body: "<p>After extended exploration sessions (2+ hours), agents drift from specific findings to generic patterns. Instead of \"<code>UserService</code> calls <code>LegacyAuthBridge.validateToken()</code>,\" the agent says \"there are typically dependency injection patterns in codebases like this.\"</p><p>This happens because earlier specific findings get pushed out or diluted as the session grows. The model falls back to general training knowledge rather than the specific facts it discovered earlier.</p>"
+          },
+          {
+            heading: "Scratchpad files as persistent memory",
+            body: "<p>The mitigation: have agents maintain <strong>scratchpad files</strong> recording key discoveries as they happen:</p><pre><code># dependency-map.md\n- UserService → LegacyAuthBridge.validateToken()\n- LegacyAuthBridge → OracleSessionManager.getSession()\n- PaymentController → StripeGateway (via DI container)</code></pre><p>The agent reads this file before answering subsequent questions. Findings are persisted to disk where they're immune to context degradation. This converts an unreliable long-context memory problem into a reliable file-read problem.</p>"
+          },
+          {
+            heading: "Crash recovery with state manifests",
+            body: "<p>For multi-agent pipelines that run for hours, design each agent to export structured state to known file locations:</p><ul><li>Completed findings (usable immediately on resume)</li><li>Current subtask (what was in progress)</li><li>Progress markers (which items were processed)</li></ul><p>On coordinator resume after a crash, load the manifest to identify what completed vs what was in-progress. Only re-run incomplete agents — don't discard hours of completed work.</p>"
+          }
+        ],
         skills: [
           {
             text: "Having agents maintain scratchpad files recording key findings, referencing them for subsequent questions to counteract context degradation",
-            q: {
-              stem: "After 3 hours exploring a large codebase, your agent starts giving vague answers like 'there are typically dependency injection patterns in codebases like this' instead of referencing the specific classes it found earlier. What is the root cause and correct mitigation?",
-              options: [
-                "The model's knowledge about the codebase is fading — restart the session",
-                "Context degradation: as the session grows, earlier specific findings get pushed out or diluted. Mitigation: have the agent maintain scratchpad files recording key discoveries (specific class names, relationships, patterns found) and reference these files in subsequent questions rather than relying on long-context memory",
-                "The agent needs a larger context window to retain earlier findings",
-                "The agent should summarise the codebase structure at the end of each session"
-              ],
-              correct: 1,
-              reasoning: "Context degradation in extended sessions causes models to drift from specific findings to generic patterns as the session grows. Scratchpad files persist findings outside the context window — the agent records specific class names, relationships, and patterns as it discovers them, and references these files later. This counteracts degradation by providing explicit, specific reference material."
-            }
+            questions: [
+              {
+                stem: "After 3 hours exploring a large codebase, your agent starts giving vague answers like 'there are typically dependency injection patterns in codebases like this' instead of referencing the specific classes it found earlier. What is the root cause and correct mitigation?",
+                options: [
+                  "The model's knowledge about the codebase is fading — restart the session",
+                  "Context degradation: as the session grows, earlier specific findings get pushed out or diluted. Mitigation: have the agent maintain scratchpad files recording key discoveries (specific class names, relationships, patterns found) and reference these files in subsequent questions rather than relying on long-context memory",
+                  "The agent needs a larger context window to retain earlier findings",
+                  "The agent should summarise the codebase structure at the end of each session"
+                ],
+                correct: 1,
+                reasoning: "Context degradation in extended sessions causes models to drift from specific findings to generic patterns as the session grows. Scratchpad files persist findings outside the context window — the agent records specific class names, relationships, and patterns as it discovers them, and references these files later. This counteracts degradation by providing explicit, specific reference material."
+              },
+              {
+                scenario: "Scenario — Legacy System Migration Planning",
+                stem: "Your agent is mapping dependencies in a 15-year-old Java monolith (2,000+ classes) to plan a microservices extraction. After analyzing 400 classes, it starts saying 'the UserService likely depends on common utilities' instead of the specific finding from 2 hours ago that `UserService` depends on `LegacyAuthBridge.validateToken()` which calls `OracleSessionManager`. How do you maintain precision throughout the full analysis?",
+                options: [
+                  "Split the analysis into multiple shorter sessions, each covering 200 classes",
+                  "Have the agent maintain a `dependency-map.md` scratchpad file, recording each specific dependency as it's discovered: `UserService → LegacyAuthBridge.validateToken() → OracleSessionManager`. Read this file before answering dependency questions — the scratchpad provides exact, persistent references regardless of session length",
+                  "Use a larger context model that can hold all 2,000 classes at once",
+                  "Run the dependency analysis with a static code analysis tool instead"
+                ],
+                correct: 1,
+                reasoning: "Scratchpad files externalize findings to the filesystem where they persist indefinitely. The agent writes specific discoveries as it goes (`UserService → LegacyAuthBridge.validateToken() → OracleSessionManager`) and reads the file before answering questions. This converts an unreliable long-context memory problem into a reliable file-read problem. The scratchpad grows with the analysis but each entry remains precise."
+              }
+            ]
           },
           {
             text: "Designing crash recovery using structured agent state exports (manifests) that the coordinator loads on resume and injects into agent prompts",
@@ -3789,6 +4331,16 @@ const DOMAINS = [
       {
         id: "5.5",
         title: "Design human review workflows and confidence calibration",
+        lesson: [
+          {
+            heading: "Confidence calibration with labeled data",
+            body: "<p>Arbitrary confidence thresholds (\"route to human if confidence < 0.7\") are often wrong. They may be too conservative (creating unnecessary review workload) or too permissive (missing errors).</p><p>Calibration process:</p><ol><li>Collect a labeled validation set (extractions with known-correct answers)</li><li>Measure actual accuracy for each confidence range (0.5-0.6, 0.6-0.7, 0.7-0.8, etc.)</li><li>Set the threshold where accuracy drops below your acceptable level</li></ol><p>Data-driven thresholds outperform arbitrary cutoffs because they reflect actual model behaviour on your specific data.</p>"
+          },
+          {
+            heading: "Prioritising limited reviewer capacity",
+            body: "<p>With limited human reviewers, routing must be strategic:</p><ul><li><strong>Auto-approve:</strong> high-confidence extractions from clear documents (reviewers add no value here)</li><li><strong>Route to review:</strong> low confidence, ambiguous sources, contradictory data, high downstream impact</li></ul><p>The goal is maximising the value of each human review minute — send reviewers the cases where their judgement actually changes outcomes, not cases the model already handled correctly with 99% reliability.</p>"
+          }
+        ],
         skills: [
           {
             text: "Having models output field-level confidence scores, then calibrating review thresholds using labeled validation sets",
@@ -3823,20 +4375,48 @@ const DOMAINS = [
       {
         id: "5.6",
         title: "Preserve information provenance and handle uncertainty in multi-source synthesis",
+        lesson: [
+          {
+            heading: "Structural preservation of provenance",
+            body: "<p>Source attribution must be preserved <strong>structurally</strong> — as explicit fields — not as prose that gets lost during synthesis:</p><pre><code>{\n  claim: \"Market growing at 12% CAGR\",\n  source_url: \"https://...\",\n  document_name: \"Q3 Industry Report\",\n  excerpt: \"The addressable market...\"\n}</code></pre><p>When subagents return prose summaries, source information disappears during synthesis. Structured claim-source mappings give downstream agents explicit fields to preserve.</p>"
+          },
+          {
+            heading: "Handling conflicting sources",
+            body: "<p>When credible sources report different values (Source A: $4.2B market, Source B: $6.8B market), the correct response is:</p><ul><li><strong>Present both</strong> with their source attributions</li><li><strong>Flag the conflict</strong> explicitly</li><li><strong>Note possible reasons</strong> (different definitions, time periods, methodologies)</li></ul><p>Never: select one, average them, or silently drop the conflict. The disagreement itself is meaningful information that downstream consumers need to evaluate.</p><div class=\"lesson-callout\"><span class=\"lesson-callout-label\">Exam pattern</span>When sources conflict, the answer is always \"present both with attribution and flag the conflict\" — never select one value or average them.</div>"
+          },
+          {
+            heading: "Why post-hoc citation fails",
+            body: "<p>Adding citations after synthesis (a separate \"citation agent\" that re-attaches sources to claims) is unreliable because:</p><ul><li>The synthesis agent may have rephrased claims, making matching ambiguous</li><li>Multiple sources may support similar claims — which one was actually used?</li><li>Claims may be synthesised from multiple sources — no single citation is correct</li></ul><p>Provenance must flow through the pipeline structurally, not be reconstructed after the fact.</p>"
+          }
+        ],
         skills: [
           {
             text: "Requiring subagents to output structured claim-source mappings (source URLs, document names, relevant excerpts) that downstream agents preserve through synthesis",
-            q: {
-              stem: "Your research pipeline produces a report where claims appear without any source attribution. The synthesis agent received findings from 6 subagents but dropped source information during summarisation. What is the correct architectural fix?",
-              options: [
-                "Instruct the synthesis agent to add citations at the end of the report",
-                "Require subagents to return structured claim-source mappings: `{claim: \"...\", source_url: \"...\", document_name: \"...\", excerpt: \"...\"}`. The synthesis agent preserves these structured fields through synthesis rather than converting to prose that loses attribution",
-                "Add a separate citation agent that runs after synthesis and looks up sources",
-                "Have the coordinator re-attach sources to the final report by cross-referencing subagent outputs"
-              ],
-              correct: 1,
-              reasoning: "Source attribution must be preserved structurally from subagent to synthesis. When subagents return prose summaries, source information is lost during synthesis. Structured claim-source mappings give the synthesis agent explicit fields to preserve. A post-hoc citation agent or coordinator re-attachment cannot reliably reconstruct mappings that were lost during synthesis."
-            }
+            questions: [
+              {
+                stem: "Your research pipeline produces a report where claims appear without any source attribution. The synthesis agent received findings from 6 subagents but dropped source information during summarisation. What is the correct architectural fix?",
+                options: [
+                  "Instruct the synthesis agent to add citations at the end of the report",
+                  "Require subagents to return structured claim-source mappings: `{claim: \"...\", source_url: \"...\", document_name: \"...\", excerpt: \"...\"}`. The synthesis agent preserves these structured fields through synthesis rather than converting to prose that loses attribution",
+                  "Add a separate citation agent that runs after synthesis and looks up sources",
+                  "Have the coordinator re-attach sources to the final report by cross-referencing subagent outputs"
+                ],
+                correct: 1,
+                reasoning: "Source attribution must be preserved structurally from subagent to synthesis. When subagents return prose summaries, source information is lost during synthesis. Structured claim-source mappings give the synthesis agent explicit fields to preserve. A post-hoc citation agent or coordinator re-attachment cannot reliably reconstruct mappings that were lost during synthesis."
+              },
+              {
+                scenario: "Scenario — Pharmaceutical Drug Interaction Research",
+                stem: "Your drug interaction research pipeline uses 4 subagents: clinical trials agent, FDA adverse events agent, pharmacology literature agent, and case reports agent. The final report states 'Drug X shows elevated cardiac risk when combined with Drug Y' but doesn't specify which source found this. A physician asks 'Is this from a clinical trial or just case reports?' and your system cannot answer. What architectural fix prevents this?",
+                options: [
+                  "Add footnote numbers to each claim and a bibliography at the end",
+                  "Require each subagent to return structured claim-source mappings: `{claim: \"elevated cardiac risk with X+Y combination\", source_type: \"clinical_trial\", source_id: \"NCT03847291\", sample_size: 2400, evidence_grade: \"A\", excerpt: \"HR 2.3, 95% CI 1.4-3.8, p<0.001\"}`. The synthesis agent preserves these structured fields and the report includes source type, evidence grade, and specific citations per claim",
+                  "Have the synthesis agent re-search each claim to find its original source",
+                  "Tag each paragraph of the report with which subagent contributed it"
+                ],
+                correct: 1,
+                reasoning: "In medical research, provenance isn't optional — physicians need to know evidence grade (clinical trial vs case report), sample size, and specific study identifiers to make clinical decisions. Structured claim-source mappings with fields like `source_type`, `evidence_grade`, and `source_id` preserve this through synthesis. Post-hoc source lookup is unreliable and cannot reconstruct evidence grades."
+              }
+            ]
           },
           {
             text: "Annotating conflicting statistics with both source attributions rather than selecting one value, flagging the conflict for human review",
