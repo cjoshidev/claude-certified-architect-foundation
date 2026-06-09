@@ -1769,9 +1769,9 @@
       <div class="prog-count" id="prog-count">0 / <span id="total-q">0</span> answered</div>
     </div>
 
-    <div class="app-footer">
-      Made with ❤️ by <a href="https://www.linkedin.com/in/chandan015/" target="_blank" rel="noopener">Chandan Joshi</a>
-    </div>
+    <!-- <div class="app-footer">
+      Vibe Coded by <a href="https://www.linkedin.com/in/chandan015/" target="_blank" rel="noopener">Chandan Joshi</a>
+    </div> -->
   </nav>
 
   <!-- MAIN -->
@@ -2764,45 +2764,87 @@ const DOMAINS = [
           },
           {
             text: "Renaming tools and updating descriptions to eliminate functional overlap (e.g., renaming analyze_content to extract_web_results with a web-specific description)",
-            q: {
-              stem: "You have two tools with near-identical descriptions that overlap in apparent functionality. Expanding descriptions has helped slightly but Claude still misroutes 20% of the time. What should you try next?",
-              options: [
-                "Add 10 few-shot examples showing the correct tool for each scenario",
-                "Rename the tools to reflect their actual distinct purpose — if one handles web content and one handles file documents, names like `extract_web_results` and `parse_document_file` make the boundary obvious at the name level, before the description is even read",
-                "Add an explicit instruction in the system prompt: 'Always prefer analyze_content for HTML'",
-                "Remove one of the tools and combine their functionality"
-              ],
-              correct: 1,
-              reasoning: "When descriptions alone don't resolve ambiguity, tool names themselves carry significant signal for Claude's selection. Renaming to reflect the actual distinct purpose — `extract_web_results` for web content, `parse_document_file` for file documents — makes the differentiation explicit at the name level. The description then reinforces rather than carrying the full burden."
-            }
+            questions: [
+              {
+                stem: "You have two tools with near-identical descriptions that overlap in apparent functionality. Expanding descriptions has helped slightly but Claude still misroutes 20% of the time. What should you try next?",
+                options: [
+                  "Add 10 few-shot examples showing the correct tool for each scenario",
+                  "Rename the tools to reflect their actual distinct purpose — if one handles web content and one handles file documents, names like `extract_web_results` and `parse_document_file` make the boundary obvious at the name level, before the description is even read",
+                  "Add an explicit instruction in the system prompt: 'Always prefer analyze_content for HTML'",
+                  "Remove one of the tools and combine their functionality"
+                ],
+                correct: 1,
+                reasoning: "When descriptions alone don't resolve ambiguity, tool names themselves carry significant signal for Claude's selection. Renaming to reflect the actual distinct purpose — `extract_web_results` for web content, `parse_document_file` for file documents — makes the differentiation explicit at the name level. The description then reinforces rather than carrying the full burden."
+              },
+              {
+                scenario: "Scenario — Codebase Migration and Documentation Agent",
+                stem: "Your documentation agent has access to `read_file` and `get_file_info`. When asked to retrieve the content of `index.js`, it frequently calls `get_file_info` (which returns file size and path) instead of `read_file`. This is because both tools have overlapping descriptions around retrieving file properties. After modifying the descriptions, Claude still calls `get_file_info` 15% of the time. What is the next logical action?",
+                options: [
+                  "Increase the context window limit to give the model more reasoning space",
+                  "Rename `get_file_info` to `retrieve_metadata_only` and `read_file` to `read_full_content` to make the difference clear at the name level before the description is read",
+                  "Merge the two tools into a single tool called `file_handler` that accepts a parameter specifying what details to return",
+                  "Add a system prompt warning: \"Do not call get_file_info if the user wants file content\""
+                ],
+                correct: 1,
+                reasoning: "When expanded descriptions do not entirely eliminate selection errors, changing the tool names to clearly differentiate their functional boundaries (e.g., `retrieve_metadata_only` vs `read_full_content`) provides an unambiguous signal at the name level itself. This prevents the model from conflating the two tools."
+              }
+            ]
           },
           {
             text: "Splitting generic tools into purpose-specific tools with defined input/output contracts (e.g., splitting a generic analyze_document into extract_data_points, summarize_content, and verify_claim_against_source)",
-            q: {
-              stem: "You have a single `analyze_document` tool used for extracting structured data, summarising content, and verifying claims. Claude often uses it for the wrong purpose or combines operations that should be separate. What is the correct fix?",
-              options: [
-                "Add more parameters to `analyze_document` so callers can specify the operation type",
-                "Split into purpose-specific tools with defined contracts: `extract_data_points` (returns structured fields), `summarize_content` (returns prose summary), `verify_claim_against_source` (returns boolean + evidence). Each tool has a clear, unambiguous purpose",
-                "Create a router tool that calls the right internal function based on the request",
-                "Add a system prompt instruction specifying when each use case applies"
-              ],
-              correct: 1,
-              reasoning: "Generic tools that serve multiple purposes force Claude to infer the intended operation from context, leading to errors. Splitting into purpose-specific tools with defined input/output contracts gives Claude clear, unambiguous selection criteria. Each tool does exactly one thing and its name and description reflect that precisely."
-            }
+            questions: [
+              {
+                stem: "You have a single `analyze_document` tool used for extracting structured data, summarising content, and verifying claims. Claude often uses it for the wrong purpose or combines operations that should be separate. What is the correct fix?",
+                options: [
+                  "Add more parameters to `analyze_document` so callers can specify the operation type",
+                  "Split into purpose-specific tools with defined contracts: `extract_data_points` (returns structured fields), `summarize_content` (returns prose summary), `verify_claim_against_source` (returns boolean + evidence). Each tool has a clear, unambiguous purpose",
+                  "Create a router tool that calls the right internal function based on the request",
+                  "Add a system prompt instruction specifying when each use case applies"
+                ],
+                correct: 1,
+                reasoning: "Generic tools that serve multiple purposes force Claude to infer the intended operation from context, leading to errors. Splitting into purpose-specific tools with defined input/output contracts gives Claude clear, unambiguous selection criteria. Each tool does exactly one thing and its name and description reflect that precisely."
+              },
+              {
+                scenario: "Scenario — Customer Feedback Classification Pipeline",
+                stem: "Your system processes incoming customer reviews using a single tool `process_review` which performs sentiment classification, translation, and notification routing. Developers find the model frequently gets confused, performs only some of the tasks, or inputs the wrong types for routing. How should you redesign this tool contract?",
+                options: [
+                  "Instruct the model in the system prompt to call the tool three separate times in sequence",
+                  "Split `process_review` into three separate, purpose-specific tools: `classify_review_sentiment`, `translate_review_text`, and `route_escalation_alert` with precise inputs/outputs for each",
+                  "Build a regex parser on the client side to clean up the output of `process_review`",
+                  "Switch the model to a larger model that is better at handling multi-step logic inside a single tool"
+                ],
+                correct: 1,
+                reasoning: "Mega-tools that perform multiple distinct tasks force the model to infer state and combine outputs, leading to errors. Splitting into purpose-specific tools (`classify_review_sentiment`, `translate_review_text`, `route_escalation_alert`) establishes clear, narrow interfaces. Each tool does exactly one thing, which dramatically increases reliability."
+              }
+            ]
           },
           {
             text: "Reviewing system prompts for keyword-sensitive instructions that might override well-written tool descriptions",
-            q: {
-              stem: "Your tool descriptions are excellent — differentiated and specific. Yet in production, Claude always calls `get_customer` first even for pure order lookup queries. Your system prompt contains: 'Always verify the customer identity before proceeding.' What is happening?",
-              options: [
-                "The tool descriptions need to be longer to outweigh the system prompt",
-                "The system prompt instruction 'always verify the customer identity first' creates a keyword association that overrides well-written tool descriptions — Claude interprets it as a directive to call `get_customer` for every request. The system prompt must be reviewed for keyword-sensitive instructions that create unintended tool associations",
-                "This is expected behaviour — the system prompt always takes precedence over tool descriptions",
-                "The `get_customer` tool description is likely too dominant in the tool list"
-              ],
-              correct: 1,
-              reasoning: "System prompt wording can override tool selection even when descriptions are well-written. A phrase like 'always verify the customer identity' creates a strong keyword association that causes Claude to call `get_customer` for all requests. System prompts must be reviewed to ensure they don't inadvertently direct tool selection via keyword associations."
-            }
+            questions: [
+              {
+                stem: "Your tool descriptions are excellent — differentiated and specific. Yet in production, Claude always calls `get_customer` first even for pure order lookup queries. Your system prompt contains: 'Always verify the customer identity before proceeding.' What is happening?",
+                options: [
+                  "The tool descriptions need to be longer to outweigh the system prompt",
+                  "The system prompt instruction 'always verify the customer identity first' creates a keyword association that overrides well-written tool descriptions — Claude interprets it as a directive to call `get_customer` for every request. The system prompt must be reviewed for keyword-sensitive instructions that create unintended tool associations",
+                  "This is expected behaviour — the system prompt always takes precedence over tool descriptions",
+                  "The `get_customer` tool description is likely too dominant in the tool list"
+                ],
+                correct: 1,
+                reasoning: "System prompt wording can override tool selection even when descriptions are well-written. A phrase like 'always verify the customer identity' creates a strong keyword association that causes Claude to call `get_customer` for all requests. System prompts must be reviewed to ensure they don't inadvertently direct tool selection via keyword associations."
+              },
+              {
+                scenario: "Scenario — E-Commerce Search and Checkout Agent",
+                stem: "Your retail agent has access to `search_catalog` and `process_payment`. The developer notices that when a customer says 'I want to see the new running shoes', the agent frequently invokes `process_payment` before displaying search results. The system prompt contains: 'Ensure you process payments securely at the earliest opportunity.' What is the root cause?",
+                options: [
+                  "The descriptions of `search_catalog` and `process_payment` have overlapping keywords",
+                  "The system prompt directive 'at the earliest opportunity' creates a strong keyword association that overrides the logical flow and tool descriptions, causing premature tool calls. The system prompt must be revised to only trigger payment tools after order confirmation",
+                  "The `process_payment` tool has a description that is too brief",
+                  "The model is assuming search results require immediate purchase authorization"
+                ],
+                correct: 1,
+                reasoning: "Instructions in the system prompt that contain strong action verbs or temporal directives (e.g., 'at the earliest opportunity') can create unintended keyword associations. This overrides the agent's reasoning loop, causing it to call tools prematurely. Revising the system prompt to explicitly tie payment tool calls to order completion fixes this bias."
+              }
+            ]
           }
         ]
       },
@@ -2858,45 +2900,87 @@ const DOMAINS = [
           },
           {
             text: "Including retriable: false flags and customer-friendly explanations for business rule violations so the agent can communicate appropriately",
-            q: {
-              stem: "A customer requests a refund of £750. Your refund policy limits refunds to £500. The MCP tool returns an error. What should the error response include so the agent can communicate this correctly to the customer?",
-              options: [
-                "Just the error code `POLICY_LIMIT_EXCEEDED` so the agent can look it up",
-                "`isRetryable: false`, `errorCategory: \"business\"`, and a human-readable description like \"Refund amount £750 exceeds the maximum policy limit of £500. Customer should be offered a partial refund of £500 or escalation to a manager\" — the agent uses this to communicate the reason and next steps",
-                "The exact policy document text so the agent can quote it accurately",
-                "A boolean `policyViolation: true` is sufficient for the agent to handle this"
-              ],
-              correct: 1,
-              reasoning: "For business rule violations, the error response should include: `isRetryable: false` (no point retrying), `errorCategory: \"business\"`, and a human-readable description that gives the agent enough context to communicate the situation and alternatives to the customer. The agent translates this into customer-facing language."
-            }
+            questions: [
+              {
+                stem: "A customer requests a refund of £750. Your refund policy limits refunds to £500. The MCP tool returns an error. What should the error response include so the agent can communicate this correctly to the customer?",
+                options: [
+                  "Just the error code `POLICY_LIMIT_EXCEEDED` so the agent can look it up",
+                  "`isRetryable: false`, `errorCategory: \"business\"`, and a human-readable description like \"Refund amount £750 exceeds the maximum policy limit of £500. Customer should be offered a partial refund of £500 or escalation to a manager\" — the agent uses this to communicate the reason and next steps",
+                  "The exact policy document text so the agent can quote it accurately",
+                  "A boolean `policyViolation: true` is sufficient for the agent to handle this"
+                ],
+                correct: 1,
+                reasoning: "For business rule violations, the error response should include: `isRetryable: false` (no point retrying), `errorCategory: \"business\"`, and a human-readable description that gives the agent enough context to communicate the situation and alternatives to the customer. The agent translates this into customer-facing language."
+              },
+              {
+                scenario: "Scenario — Ride-Hailing Refund System",
+                stem: "A rider requests a refund for a ride canceled after the free window. The refund tool fails because the request violates the cancellation policy. The tool returns `{\"status\": \"failure\", \"code\": \"POLICY_VIOLATION\"}`. The agent retries the call twice and then tells the rider 'System error, try again.' What is the correct way to handle this error?",
+                options: [
+                  "Update the tool description to explain the cancellation policy details",
+                  "Return structured error metadata: `isRetryable: false`, `errorCategory: \"business\"`, and a friendly explanation: \"Refund denied because the ride was canceled 10 minutes after dispatch, exceeding the 5-minute free window. Inform the rider of the policy and suggest contacting support if there were extenuating circumstances.\"",
+                  "Increase the agent retry limit to 5 to handle policy violations more robustly",
+                  "Configure the database to automatically approve refunds that fail with POLICY_VIOLATION"
+                ],
+                correct: 1,
+                reasoning: "For business policy violations, the error is permanent (non-retryable). Returning `isRetryable: false` prevents the agent from wasting API calls on retries. Providing a customer-friendly explanation in the error metadata allows the agent to communicate the exact reason for the denial to the user, improving the experience."
+              }
+            ]
           },
           {
             text: "Implementing local error recovery within subagents for transient failures, propagating to the coordinator only errors they cannot resolve locally along with partial results and what was attempted",
-            q: {
-              stem: "Your web search subagent encounters a timeout (transient failure) on its first API call. It immediately propagates the error to the coordinator with `{\"error\": \"timeout\"}`. The coordinator marks the research topic as failed. What should the subagent have done?",
-              options: [
-                "Immediately escalate all errors to the coordinator for centralised handling",
-                "Attempt local recovery for the transient timeout (retry 1-2 times with backoff) before propagating. Only propagate to the coordinator if local recovery fails, and include what was attempted, any partial results obtained, and alternative approaches. Don't terminate the workflow on a single recoverable failure",
-                "Return a success response with an empty result set to avoid disrupting the pipeline",
-                "Switch to a different search tool automatically without notifying the coordinator"
-              ],
-              correct: 1,
-              reasoning: "Subagents should implement local recovery for transient failures (timeouts, temporary unavailability) before escalating. Only propagate errors that cannot be resolved locally, and when propagating, include structured context: what was attempted, any partial results, and possible alternatives. This gives the coordinator meaningful information for recovery decisions."
-            }
+            questions: [
+              {
+                stem: "Your web search subagent encounters a timeout (transient failure) on its first API call. It immediately propagates the error to the coordinator with `{\"error\": \"timeout\"}`. The coordinator marks the research topic as failed. What should the subagent have done?",
+                options: [
+                  "Immediately escalate all errors to the coordinator for centralised handling",
+                  "Attempt local recovery for the transient timeout (retry 1-2 times with backoff) before propagating. Only propagate to the coordinator if local recovery fails, and include what was attempted, any partial results obtained, and alternative approaches. Don't terminate the workflow on a single recoverable failure",
+                  "Return a success response with an empty result set to avoid disrupting the pipeline",
+                  "Switch to a different search tool automatically without notifying the coordinator"
+                ],
+                correct: 1,
+                reasoning: "Subagents should implement local recovery for transient failures (timeouts, temporary unavailability) before escalating. Only propagate errors that cannot be resolved locally, and when propagating, include structured context: what was attempted, any partial results, and possible alternatives. This gives the coordinator meaningful information for recovery decisions."
+              },
+              {
+                scenario: "Scenario — Real Estate Market Scanner",
+                stem: "Your system has a real estate coordinator and a subagent that fetches property tax data from an external county API. The county API experiences a brief network blip, causing a timeout. The subagent immediately halts and returns a generic failure to the coordinator, aborting the whole analysis. What should the subagent have done?",
+                options: [
+                  "Immediately ask the user to input the property tax data manually",
+                  "Attempt local recovery by retrying the API call (e.g., using exponential backoff) up to 3 times. Only escalate to the coordinator if all retries fail, providing details of what was attempted and any partial data obtained",
+                  "Return a mock tax value of $0 to keep the coordinator from failing",
+                  "Let the coordinator retry the entire subagent spawning loop from scratch"
+                ],
+                correct: 1,
+                reasoning: "Transient network errors (like timeouts) are often temporary. Handling retries locally within the subagent keeps the failure contained and reduces coordinator latency/overhead. If it ultimately fails, propagating the details of what was tried allows the coordinator to make an informed backup plan (e.g., using estimated tax or proceeding without tax data)."
+              }
+            ]
           },
           {
             text: "Distinguishing between access failures (needing retry decisions) and valid empty results (representing successful queries with no matches)",
-            q: {
-              stem: "Your document search tool returns `{\"isError\": true, \"errorCategory\": \"transient\", \"isRetryable\": true}` when a valid search query returns zero matching documents. The agent retries this query four times. What is wrong with the error response?",
-              options: [
-                "The error category should be `\"validation\"` not `\"transient\"`",
-                "Zero results from a valid query is a successful operation, not an error. The tool should return `{\"results\": [], \"total\": 0}` — a valid empty array. Flagging it as an error causes the agent to retry a perfectly valid result, wasting resources",
-                "The agent should not retry any search query more than once",
-                "The `isRetryable` flag should be `false` for this scenario"
-              ],
-              correct: 1,
-              reasoning: "There is a fundamental distinction between an access failure (tool couldn't connect, timed out, encountered a server error) and a valid empty result (tool connected and ran the query successfully, but no documents matched). Empty results are not errors — they are successful responses with zero matches. Flagging them as errors causes incorrect retry behaviour."
-            }
+            questions: [
+              {
+                stem: "Your document search tool returns `{\"isError\": true, \"errorCategory\": \"transient\", \"isRetryable\": true}` when a valid search query returns zero matching documents. The agent retries this query four times. What is wrong with the error response?",
+                options: [
+                  "The error category should be `\"validation\"` not `\"transient\"`",
+                  "Zero results from a valid query is a successful operation, not an error. The tool should return `{\"results\": [], \"total\": 0}` — a valid empty array. Flagging it as an error causes the agent to retry a perfectly valid result, wasting resources",
+                  "The agent should not retry any search query more than once",
+                  "The `isRetryable` flag should be `false` for this scenario"
+                ],
+                correct: 1,
+                reasoning: "There is a fundamental distinction between an access failure (tool couldn't connect, timed out, encountered a server error) and a valid empty result (tool connected and ran the query successfully, but no documents matched). Empty results are not errors — they are successful responses with zero matches. Flagging them as errors causes incorrect retry behaviour."
+              },
+              {
+                scenario: "Scenario — Warehouse Inventory Tracking",
+                stem: "An inventory checker agent queries a tool `find_parts` for a custom part number. The database search succeeds but finds 0 parts. The tool returns `{\"error\": \"No parts found\", \"code\": 404, \"isRetryable\": true}`. The agent tries querying the database three more times before responding to the user. What is the design error?",
+                options: [
+                  "The database needs indexes to avoid returning empty results",
+                  "A valid search returning zero matches is a successful execution, not an error. The tool should return `{\"results\": [], \"total\": 0}`. Treating it as an error with `isRetryable: true` causes the agent to perform useless retries for a valid empty state",
+                  "The agent should have ignored the `isRetryable` flag for search queries",
+                  "The tool should have returned a mock part item instead of an empty list"
+                ],
+                correct: 1,
+                reasoning: "A successful query that returns no results is a valid empty set, not a system error. Returning an error status causes the agent's logic to treat it as a failure, leading to unnecessary retries. Accurate signaling allows the agent to immediately report that the item is out of stock instead of retrying."
+              }
+            ]
           }
         ]
       },
@@ -2948,31 +3032,59 @@ const DOMAINS = [
           },
           {
             text: "Using tool_choice forced selection to ensure a specific tool is called first (e.g., forcing extract_metadata before enrichment tools), then processing subsequent steps in follow-up turns",
-            q: {
-              stem: "Your extraction pipeline requires `extract_metadata` to always run before any enrichment tools, as enrichment tools depend on metadata fields that don't yet exist. How do you guarantee this ordering?",
-              options: [
-                "List `extract_metadata` first in the tools array — Claude will naturally call it first",
-                "Set `tool_choice: {\"type\": \"tool\", \"name\": \"extract_metadata\"}` to force that specific tool to run. After it completes and returns metadata, process the enrichment steps in follow-up turns with `tool_choice: \"auto\"`",
-                "Add a system prompt instruction: 'Always call extract_metadata before any other tool'",
-                "Set `tool_choice: \"any\"` so Claude must call a tool but will choose the right one"
-              ],
-              correct: 1,
-              reasoning: "Forced tool selection — `tool_choice: {\"type\": \"tool\", \"name\": \"extract_metadata\"}` — guarantees a specific tool runs first, regardless of Claude's preference. Tool array ordering has no effect on selection. System prompt instructions are probabilistic. `\"any\"` forces a tool call but doesn't specify which one. Forced selection is the only deterministic ordering mechanism."
-            }
+            questions: [
+              {
+                stem: "Your extraction pipeline requires `extract_metadata` to always run before any enrichment tools, as enrichment tools depend on metadata fields that don't yet exist. How do you guarantee this ordering?",
+                options: [
+                  "List `extract_metadata` first in the tools array — Claude will naturally call it first",
+                  "Set `tool_choice: {\"type\": \"tool\", \"name\": \"extract_metadata\"}` to force that specific tool to run. After it completes and returns metadata, process the enrichment steps in follow-up turns with `tool_choice: \"auto\"`",
+                  "Add a system prompt instruction: 'Always call extract_metadata before any other tool'",
+                  "Set `tool_choice: \"any\"` so Claude must call a tool but will choose the right one"
+                ],
+                correct: 1,
+                reasoning: "Forced tool selection — `tool_choice: {\"type\": \"tool\", \"name\": \"extract_metadata\"}` — guarantees a specific tool runs first, regardless of Claude's preference. Tool array ordering has no effect on selection. System prompt instructions are probabilistic. `\"any\"` forces a tool call but doesn't specify which one. Forced selection is the only deterministic ordering mechanism."
+              },
+              {
+                scenario: "Scenario — Automated Code Security Scanner",
+                stem: "Your agent analyzes repository code for security vulnerabilities. It has access to `run_vulnerability_scan` and `generate_remediation_patch`. The system requires `run_vulnerability_scan` to run first to populate the database with vulnerabilities, but the agent occasionally calls `generate_remediation_patch` immediately. How do you guarantee the correct execution sequence?",
+                options: [
+                  "Place `run_vulnerability_scan` first in the tool list array",
+                  "For the first turn, set `tool_choice: {\"type\": \"tool\", \"name\": \"run_vulnerability_scan\"}` to force it to run first. Once its tool result is received, run the next turn with `tool_choice: \"auto\"` to allow the agent to call the patch tool",
+                  "Add a system prompt instruction: \"Never call generate_remediation_patch unless run_vulnerability_scan has completed\"",
+                  "Configure the remediation tool to throw an error if the scan hasn't run yet"
+                ],
+                correct: 1,
+                reasoning: "Forced tool selection (`tool_choice: {\"type\": \"tool\", \"name\": \"...\"}`) is the only deterministic way to ensure a specific tool runs first in a multi-turn workflow. Tool array order does not guarantee execution order, and system prompt instructions are probabilistic and prone to failure under complex inputs."
+              }
+            ]
           },
           {
             text: "Setting tool_choice: \"any\" to guarantee the model calls a tool rather than returning conversational text",
-            q: {
-              stem: "Your structured data extraction pipeline sometimes receives conversational responses like \"I'd be happy to extract that information\" instead of a tool call with structured output. What is the correct fix?",
-              options: [
-                "Add to the system prompt: 'Always respond with a tool call, never with text'",
-                "Set `tool_choice: \"any\"` — this guarantees the model calls one of the available tools rather than returning conversational text. The model chooses which tool but is forced to call one",
-                "Set `tool_choice: \"auto\"` and add a validation step that rejects text responses",
-                "Force a specific tool name so the model has no choice but to extract"
-              ],
-              correct: 1,
-              reasoning: "`tool_choice: \"auto\"` (the default) allows Claude to decide whether to call a tool or return text — sometimes it will return text. `tool_choice: \"any\"` forces Claude to call a tool but allows it to choose which one. This is the correct setting when you need guaranteed structured output but have multiple valid tool options and don't need to force a specific one."
-            }
+            questions: [
+              {
+                stem: "Your structured data extraction pipeline sometimes receives conversational responses like \"I'd be happy to extract that information\" instead of a tool call with structured output. What is the correct fix?",
+                options: [
+                  "Add to the system prompt: 'Always respond with a tool call, never with text'",
+                  "Set `tool_choice: \"any\"` — this guarantees the model calls one of the available tools rather than returning conversational text. The model chooses which tool but is forced to call one",
+                  "Set `tool_choice: \"auto\"` and add a validation step that rejects text responses",
+                  "Force a specific tool name so the model has no choice but to extract"
+                ],
+                correct: 1,
+                reasoning: "`tool_choice: \"auto\"` (the default) allows Claude to decide whether to call a tool or return text — sometimes it will return text. `tool_choice: \"any\"` forces Claude to call a tool but allows it to choose which one. This is the correct setting when you need guaranteed structured output but have multiple valid tool options and don't need to force a specific one."
+              },
+              {
+                scenario: "Scenario — High-Throughput Ticket Classification",
+                stem: "You have a microservice that routes IT tickets. It uses Claude to call `categorize_ticket` with a structured payload. Occasionally, instead of calling the tool, Claude responds in plain text: 'Based on the logs, this looks like a network issue. Let me categorize it.' This causes the downstream parser to crash. How do you resolve this?",
+                options: [
+                  "Add validation logic in the parser to discard plain text responses and ask Claude again",
+                  "Set `tool_choice: \"any\"` in the API request. This forces Claude to select and call one of the provided tools (in this case, `categorize_ticket`) instead of responding with conversational text",
+                  "Use a larger model that is more likely to follow system instructions",
+                  "Pre-populate the conversation history with an assistant message containing a mock tool call"
+                ],
+                correct: 1,
+                reasoning: "By default, `tool_choice: \"auto\"` allows Claude to choose between returning text or calling a tool. If the client code expects only tool calls, setting `tool_choice: \"any\"` guarantees that Claude will call a tool in its response, eliminating conversational filler and preventing parser errors."
+              }
+            ]
           }
         ]
       },
@@ -3024,31 +3136,59 @@ const DOMAINS = [
           },
           {
             text: "Configuring personal/experimental MCP servers in user-scoped ~/.claude.json",
-            q: {
-              stem: "A developer wants to experiment with a new MCP server they are building. They don't want it affecting their teammates' Claude Code sessions. Where should this experimental server be configured?",
-              options: [
-                "In `.mcp.json` in the project root with a comment marking it as experimental",
-                "In `~/.claude.json` — user-scoped configuration applies only to that developer's Claude Code sessions and is not shared with teammates via version control",
-                "In a `.mcp.dev.json` file that gets gitignored",
-                "In an environment variable `CLAUDE_EXPERIMENTAL_MCP`"
-              ],
-              correct: 1,
-              reasoning: "User-scoped `~/.claude.json` is personal configuration that applies only to that user's sessions and is not shared via version control. This is the correct location for personal or experimental MCP servers that should not affect teammates. Project-scoped `.mcp.json` is team-shared and should only contain servers the whole team needs."
-            }
+            questions: [
+              {
+                stem: "A developer wants to experiment with a new MCP server they are building. They don't want it affecting their teammates' Claude Code sessions. Where should this experimental server be configured?",
+                options: [
+                  "In `.mcp.json` in the project root with a comment marking it as experimental",
+                  "In `~/.claude.json` — user-scoped configuration applies only to that developer's Claude Code sessions and is not shared with teammates via version control",
+                  "In a `.mcp.dev.json` file that gets gitignored",
+                  "In an environment variable `CLAUDE_EXPERIMENTAL_MCP`"
+                ],
+                correct: 1,
+                reasoning: "User-scoped `~/.claude.json` is personal configuration that applies only to that user's sessions and is not shared via version control. This is the correct location for personal or experimental MCP servers that should not affect teammates. Project-scoped `.mcp.json` is team-shared and should only contain servers the whole team needs."
+              },
+              {
+                scenario: "Scenario — Local Testing of a Custom Database MCP",
+                stem: "A developer is building a custom MCP tool for querying a local database instance. They want to test this tool using Claude Code in their workspace without committing the server configuration to the shared Git repository or disrupting their teammates' environments. Where should they configure the server?",
+                options: [
+                  "In `.mcp.json` in the project root, but they must remember to add it to `.gitignore`",
+                  "In their user-scoped `~/.claude.json` file. This configuration applies only to their local Claude Code sessions, leaving the repository clean and avoiding configuration leaks or conflicts for teammates",
+                  "In the project-level `CLAUDE.md` under a temporary testing section",
+                  "In a temporary environment variable block inside the shell script"
+                ],
+                correct: 1,
+                reasoning: "User-scoped configuration (`~/.claude.json`) is designed for personal, machine-specific, or experimental configurations. Using this file keeps experimental configurations from polluting the shared codebase via project-level `.mcp.json` files, preventing version control clutter and configuration conflicts for other developers."
+              }
+            ]
           },
           {
             text: "Enhancing MCP tool descriptions to explain capabilities and outputs in detail, preventing the agent from preferring built-in tools (like Grep) over more capable MCP tools",
-            q: {
-              stem: "You have a powerful MCP tool `search_codebase` that uses semantic search and understands code structure, far superior to Grep. However, Claude consistently uses `Grep` instead. Your `search_codebase` description says: \"Searches the codebase.\" What is the fix?",
-              options: [
-                "Remove the Grep built-in tool so Claude is forced to use the MCP tool",
-                "Enhance the `search_codebase` description to explain its capabilities and outputs in detail — e.g., 'Uses semantic understanding to find code by intent, not just text matching. Returns function signatures, usages, and dependency context. Preferred over Grep for finding how concepts are implemented, not just where strings appear'",
-                "Add a system prompt instruction: 'Always prefer search_codebase over Grep'",
-                "Rename the tool to `super_grep` so Claude associates it with search tasks"
-              ],
-              correct: 1,
-              reasoning: "Claude prefers built-in tools when MCP tool descriptions are weak, because built-in tools have rich internal descriptions. The fix is to enhance the MCP tool description to explain its capabilities, when to use it vs alternatives, and what outputs it produces. A rich description that clearly explains why `search_codebase` is superior to Grep for semantic searches will shift Claude's selection."
-            }
+            questions: [
+              {
+                stem: "You have a powerful MCP tool `search_codebase` that uses semantic search and understands code structure, far superior to Grep. However, Claude consistently uses `Grep` instead. Your `search_codebase` description says: \"Searches the codebase.\" What is the fix?",
+                options: [
+                  "Remove the Grep built-in tool so Claude is forced to use the MCP tool",
+                  "Enhance the `search_codebase` description to explain its capabilities and outputs in detail — e.g., 'Uses semantic understanding to find code by intent, not just text matching. Returns function signatures, usages, and dependency context. Preferred over Grep for finding how concepts are implemented, not just where strings appear'",
+                  "Add a system prompt instruction: 'Always prefer search_codebase over Grep'",
+                  "Rename the tool to `super_grep` so Claude associates it with search tasks"
+                ],
+                correct: 1,
+                reasoning: "Claude prefers built-in tools when MCP tool descriptions are weak, because built-in tools have rich internal descriptions. The fix is to enhance the MCP tool description to explain its capabilities, when to use it vs alternatives, and what outputs it produces. A rich description that clearly explains why `search_codebase` is superior to Grep for semantic searches will shift Claude's selection."
+              },
+              {
+                scenario: "Scenario — Database Index Optimization",
+                stem: "Your team has a custom MCP server containing `analyze_db_indexes` which uses server stats to find redundant or missing database indexes. However, when asked to look at index performance, Claude repeatedly runs `Grep` across SQL migration files instead. The MCP tool is currently described as 'Queries database indexes.' How should you fix this?",
+                options: [
+                  "Disable the `Grep` tool entirely in Claude's configuration",
+                  "Update the description of `analyze_db_indexes` to detail its features: 'Connects directly to the active database server, inspects pg_stat_user_indexes and pg_statio_user_tables, and returns actual query frequency and unused indexes. Use this for analyzing index usage and database performance, NOT for searching text files.'",
+                  "Add few-shot examples in the system prompt illustrating when SQL migrations should be grepped",
+                  "Rename `analyze_db_indexes` to `grep_live_indexes` to leverage Claude's bias toward grep"
+                ],
+                correct: 1,
+                reasoning: "Claude has a strong internal bias towards built-in tools like Grep because they have highly optimized descriptions. To override this, custom MCP tool descriptions must clearly describe their capabilities, live server integration, and outputs, and explicitly mention when they should be preferred over text-searching tools. This guides the model to the correct choice."
+              }
+            ]
           }
         ]
       },
@@ -3072,59 +3212,115 @@ const DOMAINS = [
         skills: [
           {
             text: "Selecting Grep for searching code content across a codebase (e.g., finding all callers of a function, locating error messages)",
-            q: {
-              stem: "You need to find every place in a large codebase that calls the function `processRefund`. Which built-in tool should you use?",
-              options: [
-                "Glob — to find all files that might contain refund-related code",
-                "Read — to load each file and scan through the contents",
-                "Grep — to search file contents across the codebase for the pattern `processRefund`",
-                "Bash — to run a custom find command"
-              ],
-              correct: 2,
-              reasoning: "Grep is specifically designed for content search — finding patterns within file contents. Use Grep when you need to find where a function is called, where an error message appears, or where an import is used across the codebase. Glob finds files by name/path pattern (not content). Read loads full file contents (inefficient for search). Bash with find/grep is a fallback but Grep is the purpose-built tool."
-            }
+            questions: [
+              {
+                stem: "You need to find every place in a large codebase that calls the function `processRefund`. Which built-in tool should you use?",
+                options: [
+                  "Glob — to find all files that might contain refund-related code",
+                  "Read — to load each file and scan through the contents",
+                  "Grep — to search file contents across the codebase for the pattern `processRefund`",
+                  "Bash — to run a custom find command"
+                ],
+                correct: 2,
+                reasoning: "Grep is specifically designed for content search — finding patterns within file contents. Use Grep when you need to find where a function is called, where an error message appears, or where an import is used across the codebase. Glob finds files by name/path pattern (not content). Read loads full file contents (inefficient for search). Bash with find/grep is a fallback but Grep is the purpose-built tool."
+              },
+              {
+                scenario: "Scenario — Global Error Code Audit",
+                stem: "You are auditing a monolithic codebase to find all files that throw a specific custom error `INVALID_TRANSITION_ERROR`. Which built-in tool is the most direct and efficient choice to identify these locations?",
+                options: [
+                  "Glob — to list all JavaScript and TypeScript files",
+                  "Grep — with the search pattern `INVALID_TRANSITION_ERROR` to search file contents across the entire codebase and return the exact lines where it is declared or thrown",
+                  "Read — to scan each file in the workspace one-by-one",
+                  "Bash — to run a custom Python script that parses ASTs"
+                ],
+                correct: 1,
+                reasoning: "Grep is the purpose-built tool for searching file contents across the workspace. It quickly scans all files for a string or regex match and returns file names, line numbers, and contents. Glob is for finding files by name/path pattern, and Read is for reading single file contents."
+              }
+            ]
           },
           {
             text: "Selecting Glob for finding files matching naming patterns (e.g., **/*.test.tsx)",
-            q: {
-              stem: "You need to find all test files across a large codebase to provide them as context for test generation. Test files follow the naming pattern `*.test.tsx` but are spread across many directories. Which tool should you use?",
-              options: [
-                "Grep — to search for `describe(` or `it(` patterns that appear in test files",
-                "Glob — to find all files matching the path pattern `**/*.test.tsx` regardless of directory location",
-                "Read the entire directory tree and filter manually",
-                "Bash — to run `find . -name '*.test.tsx'`"
-              ],
-              correct: 1,
-              reasoning: "Glob is designed for file path pattern matching — finding files by name or extension patterns across directory structures. `**/*.test.tsx` matches all `.test.tsx` files regardless of depth. Grep searches file contents, not names. Bash with find works but Glob is the purpose-built tool for this pattern."
-            }
+            questions: [
+              {
+                stem: "You need to find all test files across a large codebase to provide them as context for test generation. Test files follow the naming pattern `*.test.tsx` but are spread across many directories. Which tool should you use?",
+                options: [
+                  "Grep — to search for `describe(` or `it(` patterns that appear in test files",
+                  "Glob — to find all files matching the path pattern `**/*.test.tsx` regardless of directory location",
+                  "Read the entire directory tree and filter manually",
+                  "Bash — to run `find . -name '*.test.tsx'`"
+                ],
+                correct: 1,
+                reasoning: "Glob is designed for file path pattern matching — finding files by name or extension patterns across directory structures. `**/*.test.tsx` matches all `.test.tsx` files regardless of depth. Grep searches file contents, not names. Bash with find works but Glob is the purpose-built tool for this pattern."
+              },
+              {
+                scenario: "Scenario — CSS Refactoring in Monorepo",
+                stem: "You are migrating styled-components to vanilla CSS. You need to identify all CSS module files matching `*.module.css` nested inside a `packages/` directory to understand the scope of the migration. Which built-in tool should you use?",
+                options: [
+                  "Grep — searching for `.module.css` patterns inside files",
+                  "Glob — with the pattern `packages/**/*.module.css` to locate all files matching that naming convention across the package directories",
+                  "Read — to open every file in the project and check the extension",
+                  "Bash — to execute `ls -R` and parse the text output"
+                ],
+                correct: 1,
+                reasoning: "Glob is the purpose-built tool for matching file paths and names against patterns. The pattern `packages/**/*.module.css` recursively searches directories under `packages` and returns only matching files. Grep searches file contents, which is incorrect for finding file paths."
+              }
+            ]
           },
           {
             text: "Using Read to load full file contents followed by Write when Edit cannot find unique anchor text",
-            q: {
-              stem: "You attempt to use Edit to modify a specific function in `utils.py`. The Edit tool fails because the anchor text `return result` appears 12 times in the file. What is the correct fallback?",
-              options: [
-                "Use Bash to run a sed command targeting the specific line number",
-                "Use Grep to find the unique surrounding context, then retry Edit with a longer anchor string",
-                "Use Read to load the full file contents, make the targeted modification in memory, then use Write to save the updated contents",
-                "Ask the user to make the edit manually since the file is too complex"
-              ],
-              correct: 2,
-              reasoning: "When Edit fails due to non-unique anchor text, the documented fallback is Read + Write: Read loads the full file contents, the modification is made to the in-memory content, and Write saves the complete updated file. This is reliable regardless of how many times a text pattern appears. Bash/sed requires knowing exact line numbers. Retrying Edit with a longer anchor may still fail if context is repetitive."
-            }
+            questions: [
+              {
+                stem: "You attempt to use Edit to modify a specific function in `utils.py`. The Edit tool fails because the anchor text `return result` appears 12 times in the file. What is the correct fallback?",
+                options: [
+                  "Use Bash to run a sed command targeting the specific line number",
+                  "Use Grep to find the unique surrounding context, then retry Edit with a longer anchor string",
+                  "Use Read to load the full file contents, make the targeted modification in memory, then use Write to save the updated contents",
+                  "Ask the user to make the edit manually since the file is too complex"
+                ],
+                correct: 2,
+                reasoning: "When Edit fails due to non-unique anchor text, the documented fallback is Read + Write: Read loads the full file contents, the modification is made to the in-memory content, and Write saves the complete updated file. This is reliable regardless of how many times a text pattern appears. Bash/sed requires knowing exact line numbers. Retrying Edit with a longer anchor may still fail if context is repetitive."
+              },
+              {
+                scenario: "Scenario — Refactoring Repetitive Boilerplate",
+                stem: "You want to update `config.json`, which contains the line `\"status\": \"pending\"` in 15 different configuration blocks. You want to change only the block under the `\"billing\"` key. You attempt to use the `Edit` tool, but it fails because the target content `\"status\": \"pending\"` is not unique. What is the correct fallback strategy?",
+                options: [
+                  "Call `Edit` with a much larger search block that includes the entire `\"billing\"` configuration parent block, making it unique",
+                  "Call `Read` to load the full contents of `config.json` into memory, modify the billing block's status value in memory, and then call `Write` with the full modified content to overwrite the file",
+                  "Use the Bash tool to run `sed` targeting the specific line number of the billing block",
+                  "Delete the file using Bash and recreate it with the correct configuration"
+                ],
+                correct: 1,
+                reasoning: "When `Edit` fails due to non-unique search blocks, the standard, robust fallback is `Read` + `Write`. By reading the entire file, the model can safely make the edit in its context, then write the updated contents back to overwrite the file, bypassing anchor text ambiguity entirely."
+              }
+            ]
           },
           {
             text: "Building codebase understanding incrementally: starting with Grep to find entry points, then using Read to follow imports and trace flows, rather than reading all files upfront",
-            q: {
-              stem: "You need to understand how the refund flow works in an unfamiliar 200-file codebase. What is the correct exploration strategy?",
-              options: [
-                "Read all 200 files upfront to have complete context before asking questions",
-                "Start with Grep to find entry points related to refunds (function names, API endpoints, error messages), then use Read to follow the imports and trace the execution flow from those entry points — building understanding incrementally without loading irrelevant files",
-                "Use Glob to list all files, then Read each one in alphabetical order",
-                "Ask Claude to guess where the refund logic likely lives based on common patterns"
-              ],
-              correct: 1,
-              reasoning: "Reading all 200 files upfront fills the context window with mostly irrelevant content. The correct incremental approach: Grep to find entry points (e.g., grep for `refund`, `processRefund`, `REFUND_` across the codebase), then Read only the files that are relevant to the refund flow, following imports to trace the execution path. This builds accurate understanding efficiently."
-            }
+            questions: [
+              {
+                stem: "You need to understand how the refund flow works in an unfamiliar 200-file codebase. What is the correct exploration strategy?",
+                options: [
+                  "Read all 200 files upfront to have complete context before asking questions",
+                  "Start with Grep to find entry points related to refunds (function names, API endpoints, error messages), then use Read to follow the imports and trace the execution flow from those entry points — building understanding incrementally without loading irrelevant files",
+                  "Use Glob to list all files, then Read each one in alphabetical order",
+                  "Ask Claude to guess where the refund logic likely lives based on common patterns"
+                ],
+                correct: 1,
+                reasoning: "Reading all 200 files upfront fills the context window with mostly irrelevant content. The correct incremental approach: Grep to find entry points (e.g., grep for `refund`, `processRefund`, `REFUND_` across the codebase), then Read only the files that are relevant to the refund flow, following imports to trace the execution path. This builds accurate understanding efficiently."
+              },
+              {
+                scenario: "Scenario — Legacy Payment Gateway Onboarding",
+                stem: "You are tasked with understanding how an unfamiliar system processes payment callbacks. The project contains 500 files. You want to build a conceptual map of the callback flow efficiently without exceeding context limits or cluttering your session. What is the best strategy?",
+                options: [
+                  "Run `Read` on all files in alphabetical order until you locate payment logic",
+                  "Use `Grep` to search for entry points like `payment/callback` or `handleCallback`, then use `Read` on the matching file to find imported helper functions, and iteratively trace only those related files",
+                  "Run a recursive `find` using Bash and feed all paths into a single large prompt",
+                  "Ask the user to explain the codebase layout to save tool calls"
+                ],
+                correct: 1,
+                reasoning: "Incremental codebase exploration is the most efficient and context-preserving strategy. Starting with `Grep` allows you to find specific entry points. Reading those files reveals import paths and helper functions, which you can then target with subsequent `Read` or `Grep` calls. This avoids loading irrelevant code into the context."
+              }
+            ]
           }
         ]
       }
@@ -5416,9 +5612,393 @@ function showVisualize(btn) {
         </div>
       </div>
     </div>
+
+    <!-- Diagram 13: MCP Server Configuration Scoping -->
+    <div class="viz-section">
+      <div class="viz-section-title">13. MCP Server Configuration Scoping</div>
+      <div class="viz-section-desc">Where to configure MCP servers depending on whether they're shared team tooling or personal/experimental.</div>
+      <div class="viz-diagram">
+        <span class="viz-diagram-label">Two Configuration Scopes</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+          <div style="padding:20px;background:#ecfdf5;border:1.5px solid #86efac;border-radius:10px">
+            <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:#166534;margin-bottom:12px">PROJECT-SCOPED</div>
+            <div style="font-family:var(--mono);font-size:13px;color:#166534;background:#fff;border:1px solid #d1fae5;border-radius:6px;padding:10px 14px;margin-bottom:12px">.mcp.json</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">
+              <div>&#10003; Version-controlled (committed to repo)</div>
+              <div>&#10003; Available on <code>git clone</code></div>
+              <div>&#10003; Shared with entire team</div>
+              <div style="margin-top:8px"><strong>Credentials:</strong></div>
+              <div style="font-family:var(--mono);font-size:11px;background:#f0fdf4;padding:8px 12px;border-radius:4px;margin-top:4px;color:#166534">"token": "$\{GITHUB_TOKEN\}"<br><span style="color:var(--text-tertiary)">// expanded at runtime, never committed</span></div>
+            </div>
+          </div>
+          <div style="padding:20px;background:#f9f8f6;border:1.5px solid #e4e2dc;border-radius:10px">
+            <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:12px">USER-SCOPED</div>
+            <div style="font-family:var(--mono);font-size:13px;color:var(--text-secondary);background:#fff;border:1px solid #e4e2dc;border-radius:6px;padding:10px 14px;margin-bottom:12px">~/.claude.json</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">
+              <div>&#10007; NOT version-controlled</div>
+              <div>&#10007; NOT available to teammates</div>
+              <div>&#10003; Personal to this developer</div>
+              <div style="margin-top:8px"><strong>Use for:</strong></div>
+              <div style="font-size:11.5px;margin-top:4px">Experimental/personal MCP servers you're building or testing</div>
+            </div>
+          </div>
+        </div>
+        <div class="d-keybox">
+          <div class="d-keybox-title">Exam Pattern</div>
+          <div class="d-keybox-item">"New developer can't access team's MCP tools" &rarr; Config is in user-level, should be in project-level</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram 14: Built-in Tool Selection Guide -->
+    <div class="viz-section">
+      <div class="viz-section-title">14. Built-in Tool Selection Guide</div>
+      <div class="viz-section-desc">When to reach for each built-in tool based on what you're trying to accomplish.</div>
+      <div class="viz-diagram">
+        <span class="viz-diagram-label">Tool Selection Matrix</span>
+        <div style="display:grid;gap:10px">
+          <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:10px;font-size:12px">
+            <div style="font-family:var(--mono);font-weight:600;color:var(--text-tertiary);font-size:10px;text-transform:uppercase;padding:8px 0">Tool</div>
+            <div style="font-family:var(--mono);font-weight:600;color:var(--text-tertiary);font-size:10px;text-transform:uppercase;padding:8px 0">Use When</div>
+            <div style="font-family:var(--mono);font-weight:600;color:var(--text-tertiary);font-size:10px;text-transform:uppercase;padding:8px 0">Example</div>
+          </div>
+          <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:10px;font-size:13px;padding:12px 0;border-top:1px solid var(--border-soft)">
+            <div style="font-family:var(--mono);font-weight:600;color:#5855d6;padding:4px 8px;background:#f0f0ff;border-radius:4px;text-align:center">Grep</div>
+            <div style="color:var(--text-secondary)">Searching <strong>file contents</strong> for patterns</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-tertiary)">Find all callers of processRefund()</div>
+          </div>
+          <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:10px;font-size:13px;padding:12px 0;border-top:1px solid var(--border-soft)">
+            <div style="font-family:var(--mono);font-weight:600;color:#059669;padding:4px 8px;background:#ecfdf5;border-radius:4px;text-align:center">Glob</div>
+            <div style="color:var(--text-secondary)">Finding <strong>files by name/path pattern</strong></div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-tertiary)">Find all **/*.test.tsx files</div>
+          </div>
+          <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:10px;font-size:13px;padding:12px 0;border-top:1px solid var(--border-soft)">
+            <div style="font-family:var(--mono);font-weight:600;color:#0284c7;padding:4px 8px;background:#f0f9ff;border-radius:4px;text-align:center">Read</div>
+            <div style="color:var(--text-secondary)">Loading <strong>full file contents</strong></div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-tertiary)">Follow imports from entry point</div>
+          </div>
+          <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:10px;font-size:13px;padding:12px 0;border-top:1px solid var(--border-soft)">
+            <div style="font-family:var(--mono);font-weight:600;color:#d97706;padding:4px 8px;background:#fffbeb;border-radius:4px;text-align:center">Edit</div>
+            <div style="color:var(--text-secondary)">Targeted modification via <strong>unique anchor text</strong></div>
+            <div style="font-family:var(--mono);font-size:11px;color:#991b1b">Fails if anchor appears &gt;1 time</div>
+          </div>
+          <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:10px;font-size:13px;padding:12px 0;border-top:1px solid var(--border-soft)">
+            <div style="font-family:var(--mono);font-weight:600;color:var(--text-secondary);padding:4px 8px;background:#f5f4f0;border-radius:4px;text-align:center">Write</div>
+            <div style="color:var(--text-secondary)"><strong>Fallback</strong> when Edit fails &mdash; Read + modify + Write</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-tertiary)">When "return result" appears 12 times</div>
+          </div>
+          <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:10px;font-size:13px;padding:12px 0;border-top:1px solid var(--border-soft)">
+            <div style="font-family:var(--mono);font-weight:600;color:var(--text);padding:4px 8px;background:#e4e2dc;border-radius:4px;text-align:center">Bash</div>
+            <div style="color:var(--text-secondary)">Execute <strong>shell commands</strong></div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text-tertiary)">General-purpose fallback</div>
+          </div>
+        </div>
+        <div class="d-keybox" style="margin-top:20px">
+          <div class="d-keybox-title">Codebase Exploration Pattern</div>
+          <div class="d-keybox-item" style="font-weight:500;color:var(--text)">Grep (find entry points) &rarr; Read (follow imports) &rarr; DON'T read all files upfront</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram 15: Structured MCP Error Response -->
+    <div class="viz-section">
+      <div class="viz-section-title">15. Structured MCP Error Responses</div>
+      <div class="viz-section-desc">What a well-formed MCP error looks like vs the anti-patterns that prevent intelligent agent recovery.</div>
+      <div class="viz-diagram">
+        <span class="viz-diagram-label">Error Response Anatomy</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+          <div style="padding:18px;border:1.5px solid #fca5a5;border-radius:10px;background:#fef2f2">
+            <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:#991b1b;margin-bottom:12px">&#10007; BAD &mdash; Agent retries blindly</div>
+            <div style="background:#fff;border:1px solid #fecaca;border-radius:6px;padding:12px;font-family:var(--mono);font-size:11.5px;line-height:1.8;color:#7f1d1d">
+              {<br>
+              &nbsp;&nbsp;"success": false,<br>
+              &nbsp;&nbsp;"message": "Operation failed"<br>
+              }
+            </div>
+          </div>
+          <div style="padding:18px;border:1.5px solid #86efac;border-radius:10px;background:#f0fdf4">
+            <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:#166534;margin-bottom:12px">&#10003; GOOD &mdash; Agent makes smart decisions</div>
+            <div style="background:#fff;border:1px solid #bbf7d0;border-radius:6px;padding:12px;font-family:var(--mono);font-size:11.5px;line-height:1.8;color:#14532d">
+              {<br>
+              &nbsp;&nbsp;"isError": <span style="color:#0369a1">true</span>,<br>
+              &nbsp;&nbsp;"errorCategory": <span style="color:#9333ea">"business"</span>,<br>
+              &nbsp;&nbsp;"isRetryable": <span style="color:#0369a1">false</span>,<br>
+              &nbsp;&nbsp;"description": <span style="color:#9333ea">"Refund $750<br>&nbsp;&nbsp;&nbsp;exceeds $500 policy limit"</span><br>
+              }
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px">
+          <div style="text-align:center;padding:14px 10px;border-radius:8px;border:1px solid #c7c4f7;background:#f8f7ff">
+            <div style="font-family:var(--mono);font-size:10px;color:#5855d6;font-weight:600;margin-bottom:6px">TRANSIENT</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Timeout, 503</div>
+            <div style="font-family:var(--mono);font-size:10px;color:#166534;margin-top:6px;background:#dcfce7;padding:2px 6px;border-radius:3px;display:inline-block">Retryable</div>
+          </div>
+          <div style="text-align:center;padding:14px 10px;border-radius:8px;border:1px solid #fcd34d;background:#fffbeb">
+            <div style="font-family:var(--mono);font-size:10px;color:#92400e;font-weight:600;margin-bottom:6px">VALIDATION</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Bad input format</div>
+            <div style="font-family:var(--mono);font-size:10px;color:#991b1b;margin-top:6px;background:#fee2e2;padding:2px 6px;border-radius:3px;display:inline-block">Not retryable</div>
+          </div>
+          <div style="text-align:center;padding:14px 10px;border-radius:8px;border:1px solid #fca5a5;background:#fef2f2">
+            <div style="font-family:var(--mono);font-size:10px;color:#991b1b;font-weight:600;margin-bottom:6px">PERMISSION</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Unauthorized</div>
+            <div style="font-family:var(--mono);font-size:10px;color:#991b1b;margin-top:6px;background:#fee2e2;padding:2px 6px;border-radius:3px;display:inline-block">Not retryable</div>
+          </div>
+          <div style="text-align:center;padding:14px 10px;border-radius:8px;border:1px solid #e4e2dc;background:#f9f8f6">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--text);font-weight:600;margin-bottom:6px">BUSINESS</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Policy violation</div>
+            <div style="font-family:var(--mono);font-size:10px;color:#991b1b;margin-top:6px;background:#fee2e2;padding:2px 6px;border-radius:3px;display:inline-block">Not retryable</div>
+          </div>
+        </div>
+        <div class="d-keybox">
+          <div class="d-keybox-title">Critical Distinction</div>
+          <div class="d-keybox-item"><span class="d-keybox-icon d-keybox-icon--no">!</span> Empty array [ ] from a valid query is NOT an error &mdash; it's a successful response with zero matches</div>
+          <div class="d-keybox-item"><span class="d-keybox-icon d-keybox-icon--no">!</span> Access failure (timeout) vs valid empty result (no matches) must be reported differently</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram 16: Validation-Retry Loop -->
+    <div class="viz-section">
+      <div class="viz-section-title">16. Validation-Retry Loop for Structured Extraction</div>
+      <div class="viz-section-desc">How to handle extraction failures with specific error feedback, and when to stop retrying.</div>
+      <div class="viz-diagram">
+        <span class="viz-diagram-label">Extract &rarr; Validate &rarr; Retry or Route</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+          <div class="d-node d-node--accent" style="min-width:320px">
+            <div class="d-node-title" style="color:#5855d6">Extract via tool_use</div>
+            <div class="d-node-body">Structured output against JSON schema</div>
+          </div>
+          <div class="d-connector"><svg width="24" height="28"><path d="M12 0v20m-5-5l5 5 5-5" stroke="#9b9790" stroke-width="2" fill="none"/></svg></div>
+          <div class="d-node d-node--muted" style="min-width:320px">
+            <div class="d-node-title">Validate Output</div>
+            <div class="d-node-body">Schema compliance + business rules</div>
+          </div>
+          <div class="d-connector"><svg width="24" height="28"><path d="M12 0v20m-5-5l5 5 5-5" stroke="#9b9790" stroke-width="2" fill="none"/></svg></div>
+          <div class="d-decision"><span>Valid?</span></div>
+          <div style="display:flex;gap:48px;margin-top:16px;align-items:flex-start;justify-content:center;width:100%">
+            <div style="text-align:center">
+              <div style="font-family:var(--mono);font-size:11px;color:#166534;background:#dcfce7;padding:4px 10px;border-radius:4px;font-weight:600;margin-bottom:8px">YES</div>
+              <div class="d-node d-node--success" style="min-width:120px"><div class="d-node-title" style="color:#166534">Accept</div></div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:var(--mono);font-size:11px;color:#991b1b;background:#fee2e2;padding:4px 10px;border-radius:4px;font-weight:600;margin-bottom:8px">NO</div>
+              <div class="d-decision" style="transform:scale(0.85)"><span style="font-size:11px">Retryable?</span></div>
+              <div style="display:flex;gap:24px;margin-top:12px">
+                <div style="text-align:center">
+                  <div style="font-size:10px;color:#5855d6;font-family:var(--mono);font-weight:500;margin-bottom:6px">YES</div>
+                  <div class="d-node" style="min-width:150px;padding:10px;border-color:#7c7aed;background:#faf9ff">
+                    <div class="d-node-body" style="font-size:11px;text-align:left"><strong>Append specific error:</strong><br>"date must be YYYY-MM-DD,<br>you returned '15 Jan 2024'"</div>
+                  </div>
+                  <div style="font-family:var(--mono);font-size:10px;color:var(--text-tertiary);margin-top:6px">&#8593; loop back to Extract</div>
+                </div>
+                <div style="text-align:center">
+                  <div style="font-size:10px;color:#991b1b;font-family:var(--mono);font-weight:500;margin-bottom:6px">NO</div>
+                  <div class="d-node d-node--danger" style="min-width:130px;padding:10px">
+                    <div class="d-node-title" style="color:#991b1b;font-size:10px">Human Review</div>
+                    <div class="d-node-body" style="font-size:10px">Info not in document</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="d-compare" style="margin-top:28px">
+          <div class="d-compare-col d-compare-col--bad">
+            <div class="d-compare-title">Generic (Useless)</div>
+            <ul class="d-compare-list"><li>&#10007; "Invalid output, try again"</li></ul>
+          </div>
+          <div class="d-compare-col d-compare-col--good">
+            <div class="d-compare-title">Specific (Actionable)</div>
+            <ul class="d-compare-list"><li>&#10003; "invoice_date must be YYYY-MM-DD, you returned '15 Jan 2024'"</li></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram 17: Message Batches API -->
+    <div class="viz-section">
+      <div class="viz-section-title">17. Message Batches API: Blocking vs Non-Blocking</div>
+      <div class="viz-section-desc">Matching the right API to workflow latency requirements. Batches save 50% but have no SLA guarantee.</div>
+      <div class="viz-diagram">
+        <span class="viz-diagram-label">API Selection by Workflow Type</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+          <div style="padding:20px;background:#f0f0ff;border:1.5px solid #c7c4f7;border-radius:10px">
+            <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:#5855d6;margin-bottom:6px">STANDARD API</div>
+            <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:14px">Synchronous &bull; Real-time &bull; Full price</div>
+            <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.8">
+              <div><strong style="color:var(--text)">Use when:</strong></div>
+              <div>&#8226; Developers wait for results (pre-merge)</div>
+              <div>&#8226; Users are in a live conversation</div>
+              <div>&#8226; Blocking workflow — merge is gated</div>
+              <div>&#8226; Multi-turn tool calling needed</div>
+            </div>
+          </div>
+          <div style="padding:20px;background:#ecfdf5;border:1.5px solid #86efac;border-radius:10px">
+            <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:#166534;margin-bottom:6px">BATCHES API</div>
+            <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:14px">Async &bull; Up to 24h &bull; <strong>50% savings</strong></div>
+            <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.8">
+              <div><strong style="color:var(--text)">Use when:</strong></div>
+              <div>&#8226; Overnight batch processing (reports)</div>
+              <div>&#8226; Weekly analysis of 10k+ files</div>
+              <div>&#8226; No latency SLA required</div>
+              <div>&#8226; Results matched by <code>custom_id</code></div>
+            </div>
+          </div>
+        </div>
+        <div class="d-keybox">
+          <div class="d-keybox-title">Exam Pattern</div>
+          <div class="d-keybox-item">"Switch both pre-merge checks AND overnight reports to Batches?" &rarr; <strong>NO.</strong> Only overnight reports. Pre-merge needs synchronous.</div>
+          <div class="d-keybox-item" style="margin-top:4px">50 failed docs from a 1000-batch? Resubmit only the 50 failures (identified by <code>custom_id</code>), not all 1000.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram 18: Context Preservation — Case Facts -->
+    <div class="viz-section">
+      <div class="viz-section-title">18. Context Preservation: The Case Facts Pattern</div>
+      <div class="viz-section-desc">How to preserve critical transactional data across long conversations where summarisation would lose precision.</div>
+      <div class="viz-diagram">
+        <span class="viz-diagram-label">Persistent Block Architecture</span>
+        <div style="display:flex;gap:16px;margin-bottom:24px;align-items:stretch">
+          <div style="flex:1;padding:18px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px">
+            <div style="font-family:var(--mono);font-size:10px;font-weight:600;color:#991b1b;margin-bottom:10px">&#10007; WITHOUT CASE FACTS</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.7">
+              <div style="padding:6px 10px;background:#fff;border:1px solid #fecaca;border-radius:4px;margin-bottom:6px;font-size:11px">Turn 3: "Refund of &pound;47.50 for order #1234"</div>
+              <div style="text-align:center;font-size:10px;color:var(--text-tertiary)">&#8595; summarised away after 30 turns &#8595;</div>
+              <div style="padding:6px 10px;background:#fff;border:1px solid #fecaca;border-radius:4px;margin-top:6px;font-size:11px;color:#991b1b">Turn 35: "I believe the amount was around &pound;40-50"</div>
+              <div style="font-size:10px;color:#991b1b;margin-top:6px;font-style:italic">Specific amount lost during compression</div>
+            </div>
+          </div>
+          <div style="flex:1.2;padding:18px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px">
+            <div style="font-family:var(--mono);font-size:10px;font-weight:600;color:#166534;margin-bottom:10px">&#10003; WITH CASE FACTS BLOCK</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.7">
+              <div style="padding:10px 12px;background:#fff;border:2px solid #166534;border-radius:6px;margin-bottom:10px">
+                <div style="font-family:var(--mono);font-size:10px;color:#166534;font-weight:600;margin-bottom:6px">CASE FACTS (never summarised)</div>
+                <div style="font-family:var(--mono);font-size:11px;line-height:1.8;color:#14532d">
+                  customer_id: C-8821<br>
+                  order_id: #1234<br>
+                  refund_amount: &pound;47.50<br>
+                  issue: missing item<br>
+                  status: refund_approved
+                </div>
+              </div>
+              <div style="padding:6px 10px;background:#ecfdf5;border:1px solid #bbf7d0;border-radius:4px;font-size:10px;color:#166534">Summarised history (narrative only)</div>
+            </div>
+          </div>
+        </div>
+        <div class="d-keybox">
+          <div class="d-keybox-title">What goes in Case Facts</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:12.5px;color:var(--text-secondary);padding:4px 0;line-height:1.8">
+            <span>&#10003; Specific amounts (&pound;47.50)</span><span>&#10003; Order IDs (#1234)</span>
+            <span>&#10003; Dates (2024-01-15)</span><span>&#10003; Policy limits referenced</span>
+            <span>&#10003; Customer IDs</span><span>&#10003; Current issue status</span>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:var(--text-tertiary);font-style:italic">These values MUST survive summarisation unchanged.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram 19: Independent Review Architecture -->
+    <div class="viz-section">
+      <div class="viz-section-title">19. Independent Review Architecture</div>
+      <div class="viz-section-desc">Why self-review (same instance) is less effective than independent review (separate instance without generation context).</div>
+      <div class="viz-diagram">
+        <span class="viz-diagram-label">Self-Review vs Independent Review</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+          <div style="padding:18px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px">
+            <div style="font-family:var(--mono);font-size:10px;font-weight:600;color:#991b1b;margin-bottom:10px">&#10007; SELF-REVIEW (Same Instance)</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:10px">
+              <div style="background:#fff;border:1px solid #fecaca;border-radius:6px;padding:10px;width:100%;text-align:center;font-size:12px"><strong>Turn 1:</strong> Claude generates code</div>
+              <div style="font-size:10px;color:var(--text-tertiary)">&darr; same context &darr;</div>
+              <div style="background:#fff;border:1px solid #fecaca;border-radius:6px;padding:10px;width:100%;text-align:center;font-size:12px"><strong>Turn 2:</strong> Claude reviews its own code</div>
+            </div>
+            <div style="font-size:11px;color:#991b1b;font-style:italic">Retains reasoning context &rarr; blind spots where it "knows" why it wrote things</div>
+          </div>
+          <div style="padding:18px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px">
+            <div style="font-family:var(--mono);font-size:10px;font-weight:600;color:#166534;margin-bottom:10px">&#10003; INDEPENDENT REVIEW (Separate Instance)</div>
+            <div style="display:flex;gap:10px;margin-bottom:10px">
+              <div style="background:#fff;border:1px solid #bbf7d0;border-radius:6px;padding:10px;flex:1;text-align:center;font-size:12px">
+                <div style="font-weight:600;color:#5855d6">Instance A</div>
+                <div style="color:var(--text-secondary);font-size:11px;margin-top:4px">Generates code</div>
+              </div>
+              <div style="background:#fff;border:1px solid #bbf7d0;border-radius:6px;padding:10px;flex:1;text-align:center;font-size:12px">
+                <div style="font-weight:600;color:#166534">Instance B</div>
+                <div style="color:var(--text-secondary);font-size:11px;margin-top:4px">Reviews code<br><span style="color:#991b1b;font-size:10px">No generation context</span></div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#166534;font-style:italic">Fresh perspective &rarr; evaluates code on its own merits</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagram 20: Escalation Decision Tree -->
+    <div class="viz-section">
+      <div class="viz-section-title">20. Escalation Decision Criteria</div>
+      <div class="viz-section-desc">When to escalate to a human agent &mdash; based on actionable criteria, not just sentiment scores.</div>
+      <div class="viz-diagram">
+        <span class="viz-diagram-label">Escalation Logic</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+          <div class="d-node d-node--muted" style="min-width:340px">
+            <div class="d-node-title">Customer Request Received</div>
+          </div>
+          <div class="d-connector"><svg width="24" height="24"><path d="M12 0v16m-5-5l5 5 5-5" stroke="#9b9790" stroke-width="2" fill="none"/></svg></div>
+          <div class="d-decision"><span style="font-size:11px">Explicit human request?</span></div>
+          <div style="display:flex;gap:44px;margin-top:14px;align-items:flex-start;justify-content:center;width:100%">
+            <div style="text-align:center">
+              <div style="font-family:var(--mono);font-size:10px;color:#991b1b;background:#fee2e2;padding:3px 8px;border-radius:4px;font-weight:600;margin-bottom:8px">YES</div>
+              <div class="d-node d-node--danger" style="min-width:140px;padding:12px">
+                <div class="d-node-title" style="color:#991b1b;font-size:11px">Escalate IMMEDIATELY</div>
+                <div class="d-node-body" style="font-size:10px">No investigation first</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+              <div style="font-family:var(--mono);font-size:10px;color:#166534;background:#dcfce7;padding:3px 8px;border-radius:4px;font-weight:600;margin-bottom:8px">NO</div>
+              <div class="d-decision" style="transform:scale(0.85)"><span style="font-size:10px">Policy gap?</span></div>
+              <div style="display:flex;gap:32px;margin-top:10px">
+                <div style="text-align:center">
+                  <div style="font-size:10px;color:#991b1b;font-family:var(--mono);font-weight:500;margin-bottom:6px">YES</div>
+                  <div class="d-node d-node--danger" style="min-width:100px;padding:8px">
+                    <div class="d-node-body" style="font-size:10px">Escalate</div>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+                  <div style="font-size:10px;color:#166534;font-family:var(--mono);font-weight:500;margin-bottom:6px">NO</div>
+                  <div class="d-decision" style="transform:scale(0.75)"><span style="font-size:10px">Info available?</span></div>
+                  <div style="display:flex;gap:24px;margin-top:8px">
+                    <div style="text-align:center">
+                      <div style="font-size:9px;color:#166534;font-family:var(--mono);margin-bottom:4px">YES</div>
+                      <div class="d-node d-node--success" style="padding:8px;min-width:80px">
+                        <div class="d-node-body" style="font-size:10px">Resolve</div>
+                      </div>
+                    </div>
+                    <div style="text-align:center">
+                      <div style="font-size:9px;color:#991b1b;font-family:var(--mono);margin-bottom:4px">NO</div>
+                      <div class="d-node d-node--danger" style="padding:8px;min-width:80px">
+                        <div class="d-node-body" style="font-size:10px">Escalate</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="d-compare" style="margin-top:28px">
+          <div class="d-compare-col d-compare-col--bad">
+            <div class="d-compare-title">Sentiment-Based (Unreliable)</div>
+            <ul class="d-compare-list"><li>&#10007; "Escalate when sentiment &lt; 0.3"</li><li>&#10007; Misses explicit requests</li><li>&#10007; Fires on frustrated-but-resolvable</li></ul>
+          </div>
+          <div class="d-compare-col d-compare-col--good">
+            <div class="d-compare-title">Criteria-Based (Reliable)</div>
+            <ul class="d-compare-list"><li>&#10003; Customer explicitly asks for human</li><li>&#10003; Policy is silent on this case</li><li>&#10003; Required info is unavailable</li></ul>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
-
 // ─────────────────────────────────────────────
 // MOCK EXAM
 // ─────────────────────────────────────────────
